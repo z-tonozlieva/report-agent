@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Report</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .report-form {
+            max-width: 400px;
+            margin: 60px auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px #e0e0e0;
+            padding: 36px 28px;
+        }
+        .report-form label {
+            display: block;
+            margin: 18px 0 8px 0;
+        }
+        .report-form button {
+            margin-top: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="report-form">
+        <h1>Generate Report</h1>
+        <form action="/generate_report" method="post">
+            <label>Start Date:
+                <input type="date" name="start_date" required>
+            </label>
+            <label>End Date:
+                <input type="date" name="end_date" required>
+            </label>
+            <button type="submit">Generate</button>
+        </form>
+        <hr>
+        <a href="/">Back to Home</a>
+    </div>
+</body>
+</html> 

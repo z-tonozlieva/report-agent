@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generated Report</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .report-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px #e0e0e0;
+            padding: 32px 24px;
+            margin: 40px 0;
+        }
+        .report-card h2, .report-card h3 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .report-section {
+            margin-bottom: 32px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 16px;
+        }
+        .report-section:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Generated Report</h1>
+    <div class="report-card">
+        <div style="color:#888;font-size:0.98em;margin-bottom:12px;">
+            For updates from <b>{{ start_date }}</b> to <b>{{ end_date }}</b>
+        </div>
+        <div>{{ report|replace('\n', '<br>')|safe }}</div>
+    </div>
+    <hr>
+    <a href="/" class="button">Back to Home</a>
+</body>
+</html> 

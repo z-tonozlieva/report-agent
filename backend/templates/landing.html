@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PM Reporting Tool</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .centered {
+            max-width: 400px;
+            margin: 80px auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px #e0e0e0;
+            padding: 40px 32px;
+            text-align: center;
+        }
+        .main-links a, .main-links form button {
+            display: block;
+            margin: 18px 0;
+            font-size: 1.1em;
+            padding: 12px 0;
+            background: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .main-links a:hover, .main-links form button:hover {
+            background: #217dbb;
+        }
+    </style>
+</head>
+<body>
+    <div class="centered">
+        <h1>PM Reporting Tool</h1>
+        <div class="main-links">
+            <a href="/updates">View Recent Updates</a>
+            <a href="/generate_report">Generate Report</a>
+            <a href="/stats">View Team Stats</a>
+            <a href="/import_mock_data">Import Mock Data</a>
+            <a href="/import_additional_mock_data">Import Additional Mock Data</a>
+            <a href="/import_mock_updates_with_blockers">Import Mock Updates with Blockers</a>
+            <a href="/delete_all_updates">Delete All Updates</a>
+            <form action="/ask" method="post" style="margin-top:24px;">
+                <input type="text" name="question" placeholder="Ask a question..." required style="width:90%;padding:8px;">
+                <button type="submit">Ask</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html> 
