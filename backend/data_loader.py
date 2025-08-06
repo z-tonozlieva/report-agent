@@ -1,6 +1,6 @@
 # data_loader.py
 from typing import List
-from models import Update
+from .models import Update
 
 class DataLoader:
     """Handles loading and managing mock data"""

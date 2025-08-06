@@ -1,0 +1,40 @@
+# Core web and database dependencies
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+sqlalchemy>=2.0.0
+pandas>=2.0.0
+requests>=2.31.0
+
+# LangChain core and community (required for all LLM integrations)
+langchain-core>=0.1.50
+langchain-community>=0.0.30
+
+# Ollama (local LLM, optional)
+# Requires Ollama server running locally
+# https://ollama.ai/
+# pip install langchain-community
+
+# Hugging Face Transformers (local LLM, optional)
+# pip install transformers torch langchain-community
+transformers>=4.40.0  # For HuggingFaceLLM
+torch>=2.2.0          # For HuggingFaceLLM
+
+# Groq (cloud LLM, optional)
+# pip install langchain-groq
+langchain-groq>=0.1.4
+
+# OpenAI-compatible APIs (optional)
+# pip install langchain-openai
+# langchain-openai>=0.1.8
+
+# Anthropic Claude (optional)
+# pip install langchain-anthropic
+langchain-anthropic>=0.1.8
+
+# Jupyter (for .ipynb files, optional)
+# jupyter
+
+# For legacy provider code (optional)
+# pip install requests
+
+# If you use any other LLM providers, add their dependencies here

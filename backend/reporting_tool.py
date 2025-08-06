@@ -4,9 +4,9 @@ from datetime import datetime
 from typing import List, Dict, Tuple, Optional
 from collections import defaultdict
 
-from models import Update, AggregatedData
-from mock_llm import LLMInterface, MockLLM
-from data_loader import DataLoader
+from .models import Update, AggregatedData
+from .mock_llm import LLMInterface, MockLLM
+from .data_loader import DataLoader
 
 class PMReportingTool:
     """Main class for the PM reporting tool"""

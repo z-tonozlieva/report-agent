@@ -13,16 +13,18 @@ from abc import ABC, abstractmethod
 # LangChain imports
 from langchain_community.llms import Ollama
 from langchain_community.llms import HuggingFacePipeline
-# from langchain_groq import ChatGroq
+from langchain_groq import ChatGroq
 # from langchain_openai import ChatOpenAI
 from langchain_community.chat_models import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.utils.utils import convert_to_secret_str
 
 # For local Hugging Face models
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers.pipelines import pipeline
 
-from mock_llm import LLMInterface  # Use the single source of truth for LLMInterface
+from .mock_llm import LLMInterface  # Use the single source of truth for LLMInterface
 
 class LangChainLLMWrapper(LLMInterface):
     """Base wrapper for LangChain LLM implementations"""
@@ -131,36 +133,37 @@ class HuggingFaceLLM(LangChainLLMWrapper):
                 
                 super().__init__(DummyLLM(), use_chat_model=False)
 
-# class GroqLLM(LangChainLLMWrapper):
-#     """
-#     Groq API using LangChain - free tier available with very fast inference
+class GroqLLM(LangChainLLMWrapper):
+    """
+    Groq API using LangChain - free tier available with very fast inference
     
-#     Setup:
-#     1. Sign up at https://console.groq.com/
-#     2. Get free API key
-#     3. Set environment variable: export GROQ_API_KEY=your_key
-#     4. Install: pip install langchain-groq
-#     """
+    Setup:
+    1. Sign up at https://console.groq.com/
+    2. Get free API key
+    3. Set environment variable: export GROQ_API_KEY=your_key
+    4. Install: pip install langchain-groq
+    """
     
-#     def __init__(self, model_name: str = "llama3-8b-8192"):
-#         api_key = os.getenv("GROQ_API_KEY")
+    def __init__(self, model_name: str = "llama3-8b-8192"):
+        api_key = os.getenv("GROQ_API_KEY")
         
-#         if not api_key:
-#             print("Warning: GROQ_API_KEY not set. Set it as environment variable.")
-#             # Create a dummy LLM that returns error message
-#             class DummyLLM:
-#                 def invoke(self, messages):
-#                     return "Error: Groq API key not configured. Please set GROQ_API_KEY environment variable."
+        if not api_key:
+            print("Warning: GROQ_API_KEY not set. Set it as environment variable.")
+            # Create a dummy LLM that returns error message
+            class DummyLLM:
+                def invoke(self, messages):
+                    return "Error: Groq API key not configured. Please set GROQ_API_KEY environment variable."
             
-#             super().__init__(DummyLLM(), use_chat_model=True)
-#         else:
-#             llm = ChatGroq(
-#                 groq_api_key=api_key,
-#                 model_name=model_name,
-#                 temperature=0.7,
-#                 max_tokens=1000
-#             )
-#             super().__init__(llm, use_chat_model=True)
+            super().__init__(DummyLLM(), use_chat_model=True)
+        else:
+            print(f"Using Groq")
+            llm = ChatGroq(
+                model=model_name,
+                temperature=0.7,
+                max_tokens=1000,
+                api_key=convert_to_secret_str(api_key)
+            )
+            super().__init__(llm, use_chat_model=True)
 
 # class OpenAICompatibleLLM(LangChainLLMWrapper):
 #     """
@@ -256,9 +259,9 @@ def create_llm(provider: str = "mock", **kwargs) -> LLMInterface:
         model_name = kwargs.get("model_name", "microsoft/DialoGPT-medium")
         return HuggingFaceLLM(model_name=model_name)
     
-    # elif provider == "groq":
-    #     model_name = kwargs.get("model_name", "llama3-8b-8192")
-    #     return GroqLLM(model_name=model_name)
+    elif provider == "groq":
+        model_name = kwargs.get("model_name", "llama3-8b-8192")
+        return GroqLLM(model_name=model_name)
     
     # elif provider == "openai_compatible":
     #     base_url = kwargs.get("base_url", "https://api.openai.com")
