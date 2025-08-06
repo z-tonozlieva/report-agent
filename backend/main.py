@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from typing import Optional
 from datetime import datetime
 import uvicorn
+import os
 
 # Import business logic and models
 from .reporting_tool import PMReportingTool
@@ -18,8 +19,10 @@ from .data_loader import DataLoader
 from .mock_llm import LLMInterface
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 # --- SQLAlchemy setup ---
 SQLALCHEMY_DATABASE_URL = "sqlite:///./updates.db"
