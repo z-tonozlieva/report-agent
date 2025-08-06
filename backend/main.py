@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form, Depends, File, UploadFile
+from fastapi import FastAPI, Request, Form, Depends, File, UploadFile, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -11,6 +11,8 @@ import uvicorn
 import os
 import logging
 import json
+import gc
+import asyncio
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -100,7 +102,7 @@ def generate_report_form(request: Request):
     return templates.TemplateResponse("report_form.html", {"request": request})
 
 @app.post("/generate_report", response_class=HTMLResponse)
-def generate_report(
+async def generate_report(
     request: Request, 
     start_date: str = Form(...), 
     end_date: str = Form(...), 
@@ -108,19 +110,54 @@ def generate_report(
     custom_prompt: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
-    # Lazy import to avoid startup delays
-    from .config import Config
-    from .models import Update
-    
-    tool = get_reporting_tool()
-    
-    # Filter updates by date range
-    updates = db.query(UpdateDB).filter(UpdateDB.date >= start_date, UpdateDB.date <= end_date).all()
-    tool.clear_updates()
-    for u in updates:
-        tool.add_update(Update(employee=str(u.employee), role=str(u.role), date=str(u.date), update=str(u.update)))
-    
-    report = tool.generate_report(report_type=report_type, custom_prompt=custom_prompt.strip() if custom_prompt else None)
+    try:
+        # Set a timeout for the entire operation
+        async def generate_report_with_timeout():
+            # Lazy import to avoid startup delays
+            from .config import Config
+            from .models import Update
+            
+            logger.info(f"Starting report generation for {start_date} to {end_date}")
+            tool = get_reporting_tool()
+            
+            # Filter updates by date range
+            updates = db.query(UpdateDB).filter(UpdateDB.date >= start_date, UpdateDB.date <= end_date).all()
+            logger.info(f"Found {len(updates)} updates for report")
+            
+            tool.clear_updates()
+            for u in updates:
+                tool.add_update(Update(employee=str(u.employee), role=str(u.role), date=str(u.date), update=str(u.update)))
+            
+            logger.info("Generating report with LLM...")
+            report = tool.generate_report(report_type=report_type, custom_prompt=custom_prompt.strip() if custom_prompt else None)
+            logger.info("Report generation completed")
+            
+            # Force garbage collection to free memory
+            gc.collect()
+            
+            return report
+        
+        # Wait for report generation with 50-second timeout (Render has ~60s limit)
+        report = await asyncio.wait_for(generate_report_with_timeout(), timeout=50.0)
+        
+    except asyncio.TimeoutError:
+        logger.error("Report generation timed out")
+        return templates.TemplateResponse("report.html", {
+            "request": request, 
+            "report": "⚠️ Report generation timed out. This may be due to a cold start on the free tier. Please try again in a moment.", 
+            "start_date": start_date, 
+            "end_date": end_date,
+            "error": True
+        })
+    except Exception as e:
+        logger.error(f"Error generating report: {str(e)}")
+        return templates.TemplateResponse("report.html", {
+            "request": request, 
+            "report": f"❌ Error generating report: {str(e)}. If this persists, the service may be starting up.", 
+            "start_date": start_date, 
+            "end_date": end_date,
+            "error": True
+        })
     return templates.TemplateResponse("report.html", {
         "request": request, 
         "report": report, 

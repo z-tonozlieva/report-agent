@@ -16,9 +16,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.utils.utils import convert_to_secret_str
 
-# For local Hugging Face models
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from transformers.pipelines import pipeline
+# For local Hugging Face models - DISABLED for Render optimization
+# from transformers import AutoTokenizer, AutoModelForCausalLM
+# from transformers.pipelines import pipeline
 
 from .mock_llm import LLMInterface  # Use the single source of truth for LLMInterface
 
@@ -79,55 +79,19 @@ class OllamaLLM(LangChainLLMWrapper):
 
 class HuggingFaceLLM(LangChainLLMWrapper):
     """
-    Hugging Face LLM integration using LangChain - free, runs locally
+    Hugging Face LLM integration using LangChain - DISABLED for Render optimization
     
-    Setup:
-    1. Install: pip install transformers torch langchain-community
-    2. Model will be downloaded automatically on first use
+    This provider is disabled to reduce memory usage on Render free tier.
+    Use Groq instead for cloud-based inference.
     """
     
     def __init__(self, model_name: str = "microsoft/DialoGPT-medium"):
-        try:
-            # Create a local pipeline
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
-            model = AutoModelForCausalLM.from_pretrained(model_name)
-            
-            # Add padding token if it doesn't exist
-            if tokenizer.pad_token is None:
-                tokenizer.pad_token = tokenizer.eos_token
-            
-            pipe = pipeline(
-                "text-generation",
-                model=model,
-                tokenizer=tokenizer,
-                max_new_tokens=500,
-                temperature=0.7,
-                do_sample=True,
-                pad_token_id=tokenizer.eos_token_id
-            )
-            
-            llm = HuggingFacePipeline(pipeline=pipe)
-            super().__init__(llm, use_chat_model=False)
-            
-        except Exception as e:
-            # Fallback to a simpler model
-            try:
-                pipe = pipeline(
-                    "text-generation",
-                    model="gpt2",
-                    max_new_tokens=500,
-                    temperature=0.7,
-                    do_sample=True
-                )
-                llm = HuggingFacePipeline(pipeline=pipe)
-                super().__init__(llm, use_chat_model=False)
-            except Exception as e2:
-                # Create a dummy LLM that returns error message
-                class DummyLLM:
-                    def invoke(self, prompt):
-                        return f"Error loading Hugging Face model: {str(e)}. Please install transformers and torch: pip install transformers torch"
-                
-                super().__init__(DummyLLM(), use_chat_model=False)
+        # Create a dummy LLM that returns error message
+        class DummyLLM:
+            def invoke(self, prompt):
+                return "HuggingFace LLM is disabled to optimize for Render free tier. Please use Groq provider instead."
+        
+        super().__init__(DummyLLM(), use_chat_model=False)
 
 class GroqLLM(LangChainLLMWrapper):
     """

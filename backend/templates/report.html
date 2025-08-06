@@ -23,6 +23,14 @@
         .report-section:last-child {
             border-bottom: none;
         }
+        .error-message {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 16px 0;
+        }
     </style>
 </head>
 <body>
@@ -31,7 +39,11 @@
         <div style="color:#888;font-size:0.98em;margin-bottom:12px;">
             For updates from <b>{{ start_date }}</b> to <b>{{ end_date }}</b>
         </div>
-        <div>{{ report|replace('\n', '<br>')|safe }}</div>
+        {% if error %}
+            <div class="error-message">{{ report }}</div>
+        {% else %}
+            <div>{{ report|replace('\n', '<br>')|safe }}</div>
+        {% endif %}
     </div>
     <hr>
     <a href="/" class="button">Back to Home</a>

@@ -28,12 +28,38 @@
             font-family: inherit;
             resize: vertical;
         }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            margin-top: 10px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
     <div class="report-form">
         <h1>Generate Report</h1>
-        <form action="/generate_report" method="post">
+        <form action="/generate_report" method="post" id="reportForm">
             <label>Start Date:
                 <input type="date" name="start_date" required>
             </label>
@@ -43,10 +69,29 @@
             <label>Custom Prompt (optional):
                 <textarea name="custom_prompt" rows="6" placeholder="Enter a custom prompt for report generation, or leave blank to use the default prompt. The system will automatically append team update data to your prompt."></textarea>
             </label>
-            <button type="submit">Generate</button>
+            <button type="submit" id="submitBtn">Generate</button>
         </form>
+        
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <div class="loading-text">
+                Generating report... This may take up to 60 seconds on the free tier due to cold start.
+            </div>
+        </div>
         <hr>
         <a href="/">Back to Home</a>
     </div>
+    
+    <script>
+        document.getElementById('reportForm').addEventListener('submit', function(e) {
+            // Show loading spinner
+            document.getElementById('loadingSpinner').style.display = 'block';
+            
+            // Disable the submit button to prevent double submission
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Generating...';
+        });
+    </script>
 </body>
 </html> 

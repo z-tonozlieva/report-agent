@@ -16,10 +16,10 @@ langchain-community>=0.0.30
 # https://ollama.ai/
 # pip install langchain-community
 
-# Hugging Face Transformers (local LLM, optional)
+# Hugging Face Transformers (local LLM, optional - removed for Render optimization)
 # pip install transformers torch langchain-community
-transformers>=4.40.0  # For HuggingFaceLLM
-torch>=2.2.0          # For HuggingFaceLLM
+# transformers>=4.40.0  # For HuggingFaceLLM - DISABLED for Render free tier
+# torch>=2.2.0          # For HuggingFaceLLM - DISABLED for Render free tier
 
 # Groq (cloud LLM, optional)
 # pip install langchain-groq
