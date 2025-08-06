@@ -9,16 +9,18 @@ from typing import Optional
 from datetime import datetime
 import uvicorn
 import os
+import logging
 
-# Import business logic and models
-from .reporting_tool import PMReportingTool
-from .models import Update
-from .free_llm_providers import create_llm
-from .config import Config
-from .data_loader import DataLoader
-from .mock_llm import LLMInterface
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+# Add health check endpoint for Render
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
@@ -47,9 +49,37 @@ def get_db():
     finally:
         db.close()
 
-# --- LLM and reporting tool ---
-llm: LLMInterface = create_llm("groq")
-tool = PMReportingTool(llm=llm)
+# --- Lazy initialization for LLM and reporting tool ---
+_llm = None
+_tool = None
+
+def get_llm():
+    global _llm
+    if _llm is None:
+        logger.info("Initializing LLM...")
+        from .free_llm_providers import create_llm
+        _llm = create_llm("groq")
+        logger.info("LLM initialized successfully")
+    return _llm
+
+def get_reporting_tool():
+    global _tool
+    if _tool is None:
+        logger.info("Initializing reporting tool...")
+        from .reporting_tool import PMReportingTool
+        _tool = PMReportingTool(llm=get_llm())
+        logger.info("Reporting tool initialized successfully")
+    return _tool
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("FastAPI app starting up...")
+    logger.info("Database tables created")
+    logger.info("App startup complete!")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("FastAPI app shutting down...")
 
 @app.get("/", response_class=HTMLResponse)
 def landing(request: Request):
@@ -65,19 +95,46 @@ def generate_report_form(request: Request):
     return templates.TemplateResponse("report_form.html", {"request": request})
 
 @app.post("/generate_report", response_class=HTMLResponse)
-def generate_report(request: Request, start_date: str = Form(...), end_date: str = Form(...), report_type: str = Config.DEFAULT_REPORT_TYPE.value, db: Session = Depends(get_db)):
+def generate_report(
+    request: Request, 
+    start_date: str = Form(...), 
+    end_date: str = Form(...), 
+    report_type: str = Form("weekly"), 
+    db: Session = Depends(get_db)
+):
+    # Lazy import to avoid startup delays
+    from .config import Config
+    from .models import Update
+    
+    tool = get_reporting_tool()
+    
     # Filter updates by date range
     updates = db.query(UpdateDB).filter(UpdateDB.date >= start_date, UpdateDB.date <= end_date).all()
     tool.clear_updates()
     for u in updates:
         tool.add_update(Update(employee=str(u.employee), role=str(u.role), date=str(u.date), update=str(u.update)))
+    
     report = tool.generate_report(report_type=report_type)
-    return templates.TemplateResponse("report.html", {"request": request, "report": report, "start_date": start_date, "end_date": end_date})
+    return templates.TemplateResponse("report.html", {
+        "request": request, 
+        "report": report, 
+        "start_date": start_date, 
+        "end_date": end_date
+    })
 
 @app.post("/submit_update", response_class=HTMLResponse)
-def submit_update(request: Request, employee: str = Form(...), role: str = Form(...), update: str = Form(...), date: Optional[str] = Form(None), db: Session = Depends(get_db)):
+def submit_update(
+    request: Request, 
+    employee: str = Form(...), 
+    role: str = Form(...), 
+    update: str = Form(...), 
+    date: Optional[str] = Form(None), 
+    db: Session = Depends(get_db)
+):
     if not date:
+        from .config import Config
         date = datetime.now().strftime(Config.DATE_FORMAT)
+    
     db_update = UpdateDB(employee=employee, role=role, date=date, update=update)
     db.add(db_update)
     db.commit()
@@ -85,24 +142,37 @@ def submit_update(request: Request, employee: str = Form(...), role: str = Form(
 
 @app.post("/ask", response_class=HTMLResponse)
 def ask(request: Request, question: str = Form(...), db: Session = Depends(get_db)):
+    from .models import Update
+    
+    tool = get_reporting_tool()
     updates = db.query(UpdateDB).all()
     tool.clear_updates()
     for u in updates:
         tool.add_update(Update(employee=str(u.employee), role=str(u.role), date=str(u.date), update=str(u.update)))
+    
     answer = tool.answer_stakeholder_question(question)
-    return templates.TemplateResponse("answer.html", {"request": request, "question": question, "answer": answer})
+    return templates.TemplateResponse("answer.html", {
+        "request": request, 
+        "question": question, 
+        "answer": answer
+    })
 
 @app.get("/stats", response_class=HTMLResponse)
 def stats(request: Request, db: Session = Depends(get_db)):
+    from .models import Update
+    
+    tool = get_reporting_tool()
     updates = db.query(UpdateDB).all()
     tool.clear_updates()
     for u in updates:
         tool.add_update(Update(employee=str(u.employee), role=str(u.role), date=str(u.date), update=str(u.update)))
+    
     stats = tool.get_summary_stats()
     return templates.TemplateResponse("stats.html", {"request": request, "stats": stats})
 
 @app.get("/load_mock_data", response_class=HTMLResponse)
 def load_mock_data(request: Request, db: Session = Depends(get_db)):
+    tool = get_reporting_tool()
     db.query(UpdateDB).delete()
     db.commit()
     tool.clear_updates()
@@ -115,6 +185,8 @@ def load_mock_data(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/import_mock_data", response_class=HTMLResponse)
 def import_mock_data(request: Request, db: Session = Depends(get_db)):
+    from .data_loader import DataLoader
+    
     # Import all mock updates from DataLoader
     updates = DataLoader.get_mock_updates()
     for u in updates:
@@ -125,6 +197,8 @@ def import_mock_data(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/import_additional_mock_data", response_class=HTMLResponse)
 def import_additional_mock_data(request: Request, db: Session = Depends(get_db)):
+    from .data_loader import DataLoader
+    
     updates = DataLoader.get_additional_mock_updates()
     for u in updates:
         db_update = UpdateDB(employee=u.employee, role=u.role, date=u.date, update=u.update)
@@ -134,6 +208,8 @@ def import_additional_mock_data(request: Request, db: Session = Depends(get_db))
 
 @app.get("/import_mock_updates_with_blockers", response_class=HTMLResponse)
 def import_mock_updates_with_blockers(request: Request, db: Session = Depends(get_db)):
+    from .data_loader import DataLoader
+    
     updates = DataLoader.get_mock_updates_with_blockers()
     for u in updates:
         db_update = UpdateDB(employee=u.employee, role=u.role, date=u.date, update=u.update)
