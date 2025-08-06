@@ -33,6 +33,9 @@ langchain-groq>=0.1.4
 # pip install langchain-anthropic
 langchain-anthropic>=0.1.8
 
+# Markdown processing
+markdown>=3.4.0
+
 # Jupyter (for .ipynb files, optional)
 # jupyter
 
