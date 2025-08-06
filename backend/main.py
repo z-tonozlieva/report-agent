@@ -10,12 +10,12 @@ from datetime import datetime
 import uvicorn
 
 # Import business logic and models
-from reporting_tool import PMReportingTool
-from models import Update
-from free_llm_providers import create_llm
-from config import Config
-from data_loader import DataLoader
-from mock_llm import LLMInterface
+from .reporting_tool import PMReportingTool
+from .models import Update
+from .free_llm_providers import create_llm
+from .config import Config
+from .data_loader import DataLoader
+from .mock_llm import LLMInterface
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -45,7 +45,7 @@ def get_db():
         db.close()
 
 # --- LLM and reporting tool ---
-llm: LLMInterface = create_llm("ollama")
+llm: LLMInterface = create_llm("groq")
 tool = PMReportingTool(llm=llm)
 
 @app.get("/", response_class=HTMLResponse)

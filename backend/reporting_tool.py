@@ -5,7 +5,7 @@ from typing import List, Dict, Tuple, Optional
 from collections import defaultdict
 
 from .models import Update, AggregatedData
-from .mock_llm import LLMInterface, MockLLM
+from .mock_llm import LLMInterface
 from .data_loader import DataLoader
 
 class PMReportingTool:

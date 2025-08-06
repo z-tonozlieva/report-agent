@@ -10,7 +10,7 @@ import requests
 import json
 import os
 from typing import Optional
-from mock_llm import LLMInterface
+from .mock_llm import LLMInterface
 
 class OllamaLLM(LLMInterface):
     """
