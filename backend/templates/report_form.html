@@ -19,6 +19,15 @@
         .report-form button {
             margin-top: 18px;
         }
+        .report-form textarea {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+            resize: vertical;
+        }
     </style>
 </head>
 <body>
@@ -30,6 +39,9 @@
             </label>
             <label>End Date:
                 <input type="date" name="end_date" required>
+            </label>
+            <label>Custom Prompt (optional):
+                <textarea name="custom_prompt" rows="6" placeholder="Enter a custom prompt for report generation, or leave blank to use the default prompt. The system will automatically append team update data to your prompt."></textarea>
             </label>
             <button type="submit">Generate</button>
         </form>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Updates</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .manage-container {
+            max-width: 800px;
+            margin: 60px auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px #e0e0e0;
+            padding: 36px 28px;
+        }
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .file-upload {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .alert-success {
+            background-color: #dff0d8;
+            border: 1px solid #d6e9c6;
+            color: #3c763d;
+        }
+        .alert-error {
+            background-color: #f2dede;
+            border: 1px solid #ebccd1;
+            color: #a94442;
+        }
+        .json-example {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        nav {
+            background-color: #333;
+            padding: 15px 0;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            margin: 0 8px;
+            border-radius: 6px;
+            transition: background-color 0.3s;
+            display: inline-block;
+        }
+        nav a:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/">Home</a>
+        <a href="/updates">View Updates</a>
+        <a href="/manage_updates">Manage Updates</a>
+        <a href="/generate_report">Generate Report</a>
+        <a href="/stats">Statistics</a>
+    </nav>
+
+    <div class="manage-container">
+        <h1>Manage Updates</h1>
+        
+        <!-- Success/Error Messages -->
+        {% if success %}
+        <div class="alert alert-success">
+            {{ success }}
+        </div>
+        {% endif %}
+        
+        {% if error %}
+        <div class="alert alert-error">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <!-- Bulk Upload Section -->
+        <div class="section">
+            <h2>📁 Bulk Upload from JSON File</h2>
+            <p>Upload a JSON file containing multiple updates. Each update must have the fields: <code>employee</code>, <code>role</code>, <code>date</code>, and <code>update</code>.</p>
+            
+            <form action="/bulk_upload" method="post" enctype="multipart/form-data">
+                <div class="file-upload">
+                    <input type="file" name="file" accept=".json" required>
+                    <p>Select a JSON file to upload</p>
+                </div>
+                <button type="submit" class="btn">Upload Updates</button>
+            </form>
+
+            <details style="margin-top: 20px;">
+                <summary><strong>Expected JSON Format (click to expand)</strong></summary>
+                <div class="json-example">[
+    {
+        "employee": "Sarah Chen",
+        "role": "Frontend Developer",
+        "date": "2025-01-15",
+        "update": "Completed the new user authentication flow..."
+    },
+    {
+        "employee": "Mike Rodriguez",
+        "role": "Backend Developer",
+        "date": "2025-01-15",
+        "update": "Finished the API endpoints for user management..."
+    }
+]</div>
+            </details>
+        </div>
+
+        <!-- Single Update Form Section -->
+        <div class="section">
+            <h2>✍️ Add Single Update</h2>
+            <p>Add a single team update manually using the form below.</p>
+            
+            <form action="/submit_update" method="post">
+                <div class="form-group">
+                    <label for="employee">Employee Name:</label>
+                    <input type="text" id="employee" name="employee" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="role">Role:</label>
+                    <select id="role" name="role" required>
+                        <option value="">Select Role</option>
+                        <option value="Frontend Developer">Frontend Developer</option>
+                        <option value="Backend Developer">Backend Developer</option>
+                        <option value="Full Stack Developer">Full Stack Developer</option>
+                        <option value="Product Manager">Product Manager</option>
+                        <option value="DevOps Engineer">DevOps Engineer</option>
+                        <option value="QA Engineer">QA Engineer</option>
+                        <option value="UX Designer">UX Designer</option>
+                        <option value="UI Designer">UI Designer</option>
+                        <option value="Marketing Manager">Marketing Manager</option>
+                        <option value="Senior Developer">Senior Developer</option>
+                        <option value="Tech Lead">Tech Lead</option>
+                        <option value="Engineering Manager">Engineering Manager</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="date">Date:</label>
+                    <input type="date" id="date" name="date">
+                    <small>Leave blank to use today's date</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="update">Update:</label>
+                    <textarea id="update" name="update" placeholder="Describe what you worked on, what you accomplished, any blockers, and what's planned next..." required></textarea>
+                </div>
+                
+                <button type="submit" class="btn">Add Update</button>
+            </form>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="section">
+            <h2>🔧 Quick Actions</h2>
+            <p>Manage your updates database with these quick actions.</p>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px;">
+                <a href="/load_mock_data" class="btn" style="text-decoration: none; flex: 1; min-width: 150px; text-align: center;">Load Mock Data</a>
+                <a href="/import_additional_mock_data" class="btn" style="text-decoration: none; background-color: #2196F3; flex: 1; min-width: 150px; text-align: center;">Import Additional Mock Data</a>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px;">
+                <a href="/import_mock_updates_with_blockers" class="btn" style="text-decoration: none; background-color: #FF9800; flex: 1; min-width: 150px; text-align: center;">Import Blocker Data</a>
+                <a href="/delete_all_updates" class="btn" style="background-color: #f44336; text-decoration: none; flex: 1; min-width: 150px; text-align: center;" onclick="return confirm('Are you sure you want to delete all updates? This cannot be undone.')">Delete All Updates</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

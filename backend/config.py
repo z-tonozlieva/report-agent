@@ -1,6 +1,7 @@
 # config.py
+import os
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 class ReportType(Enum):
     """Enum for different report types"""
@@ -55,3 +56,24 @@ class Config:
         "show_employee_count": True,
         "show_role_distribution": True
     }
+    
+    # Environment configuration
+    IS_DEVELOPMENT = os.getenv("ENVIRONMENT", "development") == "development"
+    
+    @classmethod
+    def load_env_for_development(cls):
+        """Load .env file only for local development"""
+        if cls.IS_DEVELOPMENT:
+            try:
+                from dotenv import load_dotenv
+                load_dotenv()
+                print("Loaded .env file for local development")
+            except ImportError:
+                print("python-dotenv not installed. For local development, install with: pip install python-dotenv")
+    
+    @classmethod
+    def get_groq_api_key(cls) -> Optional[str]:
+        """Get Groq API key from environment"""
+        # Load .env only for local development
+        cls.load_env_for_development()
+        return os.getenv("GROQ_API_KEY")

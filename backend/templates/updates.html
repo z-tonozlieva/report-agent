@@ -24,33 +24,69 @@
             color: #888;
             font-size: 0.95em;
         }
-        .add-update-form {
-            margin: 32px 0 0 0;
-            padding: 24px;
-            background: #f6fafd;
-            border-radius: 8px;
+        nav {
+            background-color: #333;
+            padding: 15px 0;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            margin: 0 8px;
+            border-radius: 6px;
+            transition: background-color 0.3s;
+            display: inline-block;
+        }
+        nav a:hover {
+            background-color: #555;
+        }
+        .action-buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .btn:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
 <body>
+    <nav>
+        <a href="/">Home</a>
+        <a href="/updates">View Updates</a>
+        <a href="/manage_updates">Manage Updates</a>
+        <a href="/generate_report">Generate Report</a>
+        <a href="/stats">Statistics</a>
+    </nav>
+
     <div class="updates-list">
         <h1>Recent Updates</h1>
-        <a href="/" style="float:right;">Back to Home</a>
-        <div style="clear:both;"></div>
-        {% for u in updates %}
-        <div class="update-item">
-            <div class="update-meta"><b>{{ u.employee }}</b> ({{ u.role }}) &mdash; {{ u.date }}</div>
-            <div>{{ u.update }}</div>
+        {% if updates %}
+            {% for u in updates %}
+            <div class="update-item">
+                <div class="update-meta"><b>{{ u.employee }}</b> ({{ u.role }}) &mdash; {{ u.date }}</div>
+                <div>{{ u.update }}</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>No updates found. <a href="/manage_updates">Add some updates</a> to get started.</p>
+        {% endif %}
+        
+        <div class="action-buttons">
+            <a href="/manage_updates" class="btn">Add New Update</a>
+            <a href="/generate_report" class="btn">Generate Report</a>
         </div>
-        {% endfor %}
-        <form class="add-update-form" action="/submit_update" method="post">
-            <h2>Add New Update</h2>
-            <label>Employee: <input type="text" name="employee" required></label><br>
-            <label>Role: <input type="text" name="role" required></label><br>
-            <label>Date: <input type="date" name="date"></label><br>
-            <label>Update:<br><textarea name="update" rows="4" cols="40" required></textarea></label><br>
-            <button type="submit">Submit Update</button>
-        </form>
     </div>
 </body>
 </html> 

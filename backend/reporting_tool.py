@@ -82,7 +82,7 @@ class PMReportingTool:
             total_updates=len(updates)
         )
     
-    def generate_report(self, report_type: str = "weekly", date_range: Optional[Tuple[datetime, datetime]] = None) -> str:
+    def generate_report(self, report_type: str = "weekly", date_range: Optional[Tuple[datetime, datetime]] = None, custom_prompt: Optional[str] = None) -> str:
         """Generate a report based on aggregated updates with improved prompt engineering and context management"""
         # Context management: filter updates by date range and limit to most recent 50
         if date_range:
@@ -130,34 +130,49 @@ class PMReportingTool:
             "- Complete payment UI, finalize Q4 content, address mobile bugs.\n"
         )
         
-        # Prompt engineering: explicit instructions, delimiters, example
-        prompt = f"""
-        You are an expert project manager AI assistant. Based on the following team updates, generate a **{report_type} report** for stakeholders.
-        
-        {context_stats}
-        
-        Please follow these instructions:
-        - Use **Markdown** formatting with clear headings and bullet points.
-        - Structure the report with the following sections:
-          1. Key Achievements and Progress
-          2. Current Focus Areas
-          3. Blockers or Challenges
-          4. Upcoming Priorities
-        - Be concise, executive-friendly, and actionable.
-        - Only use the information provided in the context.
-        
-        Here is an example of a good report:
-        {example}
-        
-        ---
-        
-        Here are the team updates (delimited by triple backticks):
-        ```
-        {context}
-        ```
-        
-        Please generate the report below:
-        """
+        # Use custom prompt if provided, otherwise use default
+        if custom_prompt:
+            prompt = f"""
+            {custom_prompt}
+            
+            {context_stats}
+            
+            Here are the team updates (delimited by triple backticks):
+            ```
+            {context}
+            ```
+            
+            Please generate the report below:
+            """
+        else:
+            # Default prompt engineering: explicit instructions, delimiters, example
+            prompt = f"""
+            You are an expert project manager AI assistant. Based on the following team updates, generate a **{report_type} report** for stakeholders.
+            
+            {context_stats}
+            
+            Please follow these instructions:
+            - Use **Markdown** formatting with clear headings and bullet points.
+            - Structure the report with the following sections:
+              1. Key Achievements and Progress
+              2. Current Focus Areas
+              3. Blockers or Challenges
+              4. Upcoming Priorities
+            - Be concise, executive-friendly, and actionable.
+            - Only use the information provided in the context.
+            
+            Here is an example of a good report:
+            {example}
+            
+            ---
+            
+            Here are the team updates (delimited by triple backticks):
+            ```
+            {context}
+            ```
+            
+            Please generate the report below:
+            """
         report = self.llm.generate_response(prompt)
         return report
     

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form, Depends
+from fastapi import FastAPI, Request, Form, Depends, File, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -10,6 +10,7 @@ from datetime import datetime
 import uvicorn
 import os
 import logging
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -90,6 +91,10 @@ def updates_page(request: Request, db: Session = Depends(get_db)):
     updates = db.query(UpdateDB).order_by(UpdateDB.id.desc()).all()
     return templates.TemplateResponse("updates.html", {"request": request, "updates": updates})
 
+@app.get("/manage_updates", response_class=HTMLResponse)
+def manage_updates_page(request: Request):
+    return templates.TemplateResponse("manage_updates.html", {"request": request})
+
 @app.get("/generate_report", response_class=HTMLResponse)
 def generate_report_form(request: Request):
     return templates.TemplateResponse("report_form.html", {"request": request})
@@ -99,7 +104,8 @@ def generate_report(
     request: Request, 
     start_date: str = Form(...), 
     end_date: str = Form(...), 
-    report_type: str = Form("weekly"), 
+    report_type: str = Form("weekly"),
+    custom_prompt: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     # Lazy import to avoid startup delays
@@ -114,7 +120,7 @@ def generate_report(
     for u in updates:
         tool.add_update(Update(employee=str(u.employee), role=str(u.role), date=str(u.date), update=str(u.update)))
     
-    report = tool.generate_report(report_type=report_type)
+    report = tool.generate_report(report_type=report_type, custom_prompt=custom_prompt.strip() if custom_prompt else None)
     return templates.TemplateResponse("report.html", {
         "request": request, 
         "report": report, 
@@ -138,7 +144,76 @@ def submit_update(
     db_update = UpdateDB(employee=employee, role=role, date=date, update=update)
     db.add(db_update)
     db.commit()
-    return RedirectResponse("/updates", status_code=303)
+    return RedirectResponse("/manage_updates", status_code=303)
+
+@app.post("/bulk_upload", response_class=HTMLResponse)
+async def bulk_upload(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        # Read the uploaded file
+        contents = await file.read()
+        
+        # Parse JSON
+        try:
+            updates_data = json.loads(contents)
+        except json.JSONDecodeError:
+            return templates.TemplateResponse("manage_updates.html", {
+                "request": request, 
+                "error": "Invalid JSON file. Please check the file format."
+            })
+        
+        # Validate that it's a list
+        if not isinstance(updates_data, list):
+            return templates.TemplateResponse("manage_updates.html", {
+                "request": request, 
+                "error": "JSON file must contain an array of update objects."
+            })
+        
+        # Validate each update has required fields
+        required_fields = ["employee", "role", "date", "update"]
+        added_count = 0
+        
+        for i, update_data in enumerate(updates_data):
+            if not isinstance(update_data, dict):
+                return templates.TemplateResponse("manage_updates.html", {
+                    "request": request, 
+                    "error": f"Invalid update format at index {i}. Each update must be an object."
+                })
+            
+            # Check required fields
+            missing_fields = [field for field in required_fields if field not in update_data]
+            if missing_fields:
+                return templates.TemplateResponse("manage_updates.html", {
+                    "request": request, 
+                    "error": f"Missing required fields at index {i}: {', '.join(missing_fields)}"
+                })
+            
+            # Add to database
+            db_update = UpdateDB(
+                employee=str(update_data["employee"]),
+                role=str(update_data["role"]),
+                date=str(update_data["date"]),
+                update=str(update_data["update"])
+            )
+            db.add(db_update)
+            added_count += 1
+        
+        db.commit()
+        
+        return templates.TemplateResponse("manage_updates.html", {
+            "request": request, 
+            "success": f"Successfully added {added_count} updates from {file.filename}"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error processing bulk upload: {str(e)}")
+        return templates.TemplateResponse("manage_updates.html", {
+            "request": request, 
+            "error": f"Error processing file: {str(e)}"
+        })
 
 @app.post("/ask", response_class=HTMLResponse)
 def ask(request: Request, question: str = Form(...), db: Session = Depends(get_db)):

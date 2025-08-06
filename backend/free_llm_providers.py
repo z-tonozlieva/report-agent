@@ -6,10 +6,6 @@ This module provides integrations with various free LLM APIs using LangChain
 for better standardization and error handling.
 """
 
-import os
-from typing import Optional
-from abc import ABC, abstractmethod
-
 # LangChain imports
 from langchain_community.llms import Ollama
 from langchain_community.llms import HuggingFacePipeline
@@ -145,7 +141,8 @@ class GroqLLM(LangChainLLMWrapper):
     """
     
     def __init__(self, model_name: str = "llama3-8b-8192"):
-        api_key = os.getenv("GROQ_API_KEY")
+        from .config import Config
+        api_key = Config.get_groq_api_key()
         
         if not api_key:
             print("Warning: GROQ_API_KEY not set. Set it as environment variable.")

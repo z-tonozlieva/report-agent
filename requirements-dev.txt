@@ -1,0 +1,5 @@
+# Development requirements (includes all production requirements plus dev tools)
+-r requirements.txt
+
+# Local development only
+python-dotenv>=1.0.0
