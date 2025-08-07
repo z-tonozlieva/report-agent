@@ -35,12 +35,14 @@ app.mount(
 )
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
+
 # Add Markdown filter to Jinja2
 def markdown_filter(text):
     """Convert Markdown to HTML"""
-    return markdown.markdown(text, extensions=['nl2br'])
+    return markdown.markdown(text, extensions=["nl2br"])
 
-templates.env.filters['markdown'] = markdown_filter
+
+templates.env.filters["markdown"] = markdown_filter
 
 # --- SQLAlchemy setup ---
 SQLALCHEMY_DATABASE_URL = "sqlite:///./updates.db"

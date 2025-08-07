@@ -6,6 +6,3 @@ python-dotenv>=1.0.0
 
 # Linting and formatting
 ruff>=0.1.0
-
-# Already included in requirements.txt but listed here for clarity
-# markdown>=3.4.0
