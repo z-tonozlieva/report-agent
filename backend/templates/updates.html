@@ -1,92 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Recent Updates</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <style>
-        .updates-list {
-            max-width: 700px;
-            margin: 40px auto;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 12px #e0e0e0;
-            padding: 32px 24px;
-        }
-        .update-item {
-            margin-bottom: 28px;
-            padding-bottom: 18px;
-            border-bottom: 1px solid #eee;
-        }
-        .update-item:last-child {
-            border-bottom: none;
-        }
-        .update-meta {
-            color: #888;
-            font-size: 0.95em;
-        }
-        nav {
-            background-color: #333;
-            padding: 15px 0;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-        nav a {
-            color: white;
-            text-decoration: none;
-            padding: 12px 24px;
-            margin: 0 8px;
-            border-radius: 6px;
-            transition: background-color 0.3s;
-            display: inline-block;
-        }
-        nav a:hover {
-            background-color: #555;
-        }
-        .action-buttons {
-            margin-top: 20px;
-            text-align: center;
-        }
-        .btn {
-            display: inline-block;
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            text-decoration: none;
-            margin: 0 10px;
-        }
-        .btn:hover {
-            background-color: #45a049;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recent Updates - PM Reporting Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <nav>
-        <a href="/">Home</a>
-        <a href="/updates">View Updates</a>
-        <a href="/manage_updates">Manage Updates</a>
-        <a href="/generate_report">Generate Report</a>
-        <a href="/stats">Statistics</a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-chart-line"></i> PM Reporting Tool
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link active" href="/updates">Updates</a>
+                <a class="nav-link" href="/generate_report">Reports</a>
+                <a class="nav-link" href="/intelligent_ask_page">Intelligent Q&A</a>
+                <a class="nav-link" href="/stats">Stats</a>
+            </div>
+        </div>
     </nav>
 
-    <div class="updates-list">
-        <h1>Recent Updates</h1>
-        {% if updates %}
-            {% for u in updates %}
-            <div class="update-item">
-                <div class="update-meta"><b>{{ u.employee }}</b> ({{ u.role }}) &mdash; {{ u.date }}</div>
-                <div>{{ u.update }}</div>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-9">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4><i class="fas fa-list"></i> Recent Updates</h4>
+                        <p class="mb-0">Browse all team status updates</p>
+                    </div>
+                    <div class="card-body">
+                        {% if updates %}
+                            {% for u in updates %}
+                            <div class="border-start border-4 border-primary ps-3 mb-4">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <strong class="text-primary">{{ u.employee }}</strong>
+                                        <span class="badge bg-secondary ms-2">{{ u.role }}</span>
+                                    </div>
+                                    <small class="text-muted">{{ u.date }}</small>
+                                </div>
+                                <div class="text-muted">{{ u.update }}</div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <h5>No updates found</h5>
+                                <p class="text-muted">Get started by <a href="/manage_updates">adding some updates</a>.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-            {% endfor %}
-        {% else %}
-            <p>No updates found. <a href="/manage_updates">Add some updates</a> to get started.</p>
-        {% endif %}
-        
-        <div class="action-buttons">
-            <a href="/manage_updates" class="btn">Add New Update</a>
-            <a href="/generate_report" class="btn">Generate Report</a>
+
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header">
+                        <h6><i class="fas fa-tools"></i> Quick Actions</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="/manage_updates" class="btn btn-success">
+                                <i class="fas fa-plus"></i> Add Update
+                            </a>
+                            <a href="/generate_report" class="btn btn-info">
+                                <i class="fas fa-file-alt"></i> Generate Report
+                            </a>
+                            <a href="/intelligent_ask_page" class="btn btn-outline-primary">
+                                <i class="fas fa-brain"></i> Ask Questions
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                {% if updates %}
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6><i class="fas fa-chart-bar"></i> Summary</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+                            <li><strong>Total Updates:</strong> {{ updates|length }}</li>
+                            <li><strong>Team Members:</strong> {{ updates|map(attribute='employee')|unique|list|length }}</li>
+                            <li><strong>Latest:</strong> {{ updates[0].date if updates else 'N/A' }}</li>
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html> 

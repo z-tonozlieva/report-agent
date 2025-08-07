@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligent Q&A - PM Reporting Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .query-card { margin-bottom: 20px; border-left: 4px solid #007bff; }
+        .classification-badge { margin: 2px; }
+        .method-icon { margin-right: 8px; }
+        .confidence-bar { height: 20px; background: #e9ecef; border-radius: 10px; }
+        .confidence-fill { height: 100%; border-radius: 10px; transition: width 0.3s; }
+        .suggestion-item { cursor: pointer; padding: 8px; border-radius: 4px; margin: 2px 0; }
+        .suggestion-item:hover { background-color: #f8f9fa; }
+        .routing-info { background-color: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 15px; }
+        .method-factual { color: #28a745; }
+        .method-semantic { color: #17a2b8; }
+        .method-analytical { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-chart-line"></i> PM Reporting Tool
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/updates">Updates</a>
+                <a class="nav-link" href="/generate_report">Reports</a>
+                <a class="nav-link active" href="/intelligent_ask_page">Intelligent Q&A</a>
+                <a class="nav-link" href="/stats">Stats</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4><i class="fas fa-brain method-icon"></i>Intelligent Query Routing</h4>
+                        <p class="mb-0">Ask questions and let AI automatically choose the best method to answer them</p>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="/intelligent_ask_page">
+                            <div class="mb-3">
+                                <label for="question" class="form-label">Your Question</label>
+                                <textarea class="form-control" id="question" name="question" rows="3" 
+                                        placeholder="Ask anything about team updates, reports, or specific insights..."
+                                        value="{{ question or '' }}" oninput="getQuerySuggestions()"></textarea>
+                                
+                                <!-- Query Suggestions -->
+                                <div id="suggestions-container" style="display: none;" class="mt-2">
+                                    <small class="text-muted">Suggestions:</small>
+                                    <div id="suggestions-list"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="method_override" class="form-label">
+                                        Method Override <small class="text-muted">(optional)</small>
+                                    </label>
+                                    <select class="form-select" name="method_override">
+                                        <option value="">Auto-detect (recommended)</option>
+                                        <option value="factual">Factual (direct Q&A)</option>
+                                        <option value="semantic">Semantic (similarity search)</option>
+                                        <option value="analytical">Analytical (deep reasoning)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-search"></i> Ask Question
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <!-- Classification Preview -->
+                        <div id="classification-preview" style="display: none;" class="mt-3">
+                            <div class="alert alert-info">
+                                <strong>Query Classification Preview:</strong>
+                                <div id="classification-details"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if answer %}
+                <div class="card query-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            {% if method_used == 'factual' %}
+                                <i class="fas fa-question-circle method-icon method-factual"></i>Factual Answer
+                            {% elif method_used == 'semantic' %}
+                                <i class="fas fa-search method-icon method-semantic"></i>Semantic Search
+                            {% elif method_used == 'analytical' %}
+                                <i class="fas fa-brain method-icon method-analytical"></i>Analytical Response
+                            {% else %}
+                                <i class="fas fa-robot method-icon"></i>{{ method_used|title }}
+                            {% endif %}
+                        </h5>
+                        
+                        {% if confidence %}
+                        <div class="d-flex align-items-center">
+                            <small class="text-muted me-2">Confidence:</small>
+                            <div class="confidence-bar" style="width: 100px;">
+                                <div class="confidence-fill bg-success" style="width: {{ (confidence * 100)|round }}%;"></div>
+                            </div>
+                            <small class="text-muted ms-2">{{ (confidence * 100)|round }}%</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <strong>Question:</strong> {{ question }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong>Answer:</strong>
+                            <div class="mt-2">
+                                {{ answer | markdown | safe }}
+                            </div>
+                        </div>
+
+                        {% if classification %}
+                        <div class="routing-info">
+                            <h6><i class="fas fa-route"></i> Routing Information</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Query Type:</strong> 
+                                    <span class="badge classification-badge
+                                        {% if classification.query_type == 'factual' %}bg-success
+                                        {% elif classification.query_type == 'semantic' %}bg-info
+                                        {% elif classification.query_type == 'analytical' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ classification.query_type|title }}
+                                    </span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Reasoning:</strong> {{ classification.reasoning }}
+                                </div>
+                            </div>
+                            
+                            {% if classification.suggested_params %}
+                            <div class="mt-2">
+                                <strong>Detected Parameters:</strong>
+                                <ul class="mb-0">
+                                {% for key, value in classification.suggested_params.items() %}
+                                    <li><code>{{ key }}</code>: {{ value }}</li>
+                                {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        {% if routing_info %}
+                        <div class="mt-3">
+                            <h6><i class="fas fa-cogs"></i> Processing Details</h6>
+                            {% for key, value in routing_info.items() %}
+                                <div class="mb-1">
+                                    <small class="text-muted">{{ key|replace('_', ' ')|title }}:</small> 
+                                    {% if value is mapping %}
+                                        <code>{{ value }}</code>
+                                    {% elif value is iterable and value is not string %}
+                                        {{ value|length }} items
+                                    {% else %}
+                                        {{ value }}
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if error %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i> Error: {{ error }}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Sidebar with query examples and tips -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6><i class="fas fa-lightbulb"></i> Query Examples</h6>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="method-factual"><i class="fas fa-question-circle"></i> Factual Queries</h6>
+                        <ul class="list-unstyled mb-3">
+                            <li class="suggestion-item" onclick="setQuery('Who is working on the payment integration?')">
+                                Who is working on the payment integration?
+                            </li>
+                            <li class="suggestion-item" onclick="setQuery('What are the current blockers?')">
+                                What are the current blockers?
+                            </li>
+                        </ul>
+
+                        <h6 class="method-semantic"><i class="fas fa-search"></i> Semantic Queries</h6>
+                        <ul class="list-unstyled mb-3">
+                            <li class="suggestion-item" onclick="setQuery('Find updates similar to authentication issues')">
+                                Find updates similar to authentication issues
+                            </li>
+                            <li class="suggestion-item" onclick="setQuery('Show me common themes across the team')">
+                                Show me common themes across the team
+                            </li>
+                        </ul>
+
+
+                        <h6 class="method-analytical"><i class="fas fa-brain"></i> Analytical Queries</h6>
+                        <ul class="list-unstyled">
+                            <li class="suggestion-item" onclick="setQuery('Why are there delays in the project?')">
+                                Why are there delays in the project?
+                            </li>
+                            <li class="suggestion-item" onclick="setQuery('Analyze the impact of recent blockers')">
+                                Analyze the impact of recent blockers
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6><i class="fas fa-info-circle"></i> How It Works</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="small">The intelligent router analyzes your question and automatically chooses the best method:</p>
+                        <ul class="small">
+                            <li><strong class="method-factual">Factual:</strong> For direct questions about specific data</li>
+                            <li><strong class="method-semantic">Semantic:</strong> For finding similar content or themes</li>
+                            <li><strong class="method-analytical">Analytical:</strong> For complex reasoning and insights</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function setQuery(query) {
+            document.getElementById('question').value = query;
+            classifyQuery(query);
+        }
+
+        let suggestionTimeout;
+        function getQuerySuggestions() {
+            clearTimeout(suggestionTimeout);
+            const query = document.getElementById('question').value.trim();
+            
+            if (query.length < 3) {
+                document.getElementById('suggestions-container').style.display = 'none';
+                return;
+            }
+            
+            suggestionTimeout = setTimeout(() => {
+                // Classify query for preview
+                classifyQuery(query);
+                
+                // Get suggestions (simplified for demo)
+                const suggestions = generateSuggestions(query);
+                displaySuggestions(suggestions);
+            }, 500);
+        }
+
+        function classifyQuery(query) {
+            if (query.length < 5) return;
+            
+            fetch('/classify_query', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({question: query})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    displayClassification(data.classification);
+                }
+            })
+            .catch(console.error);
+        }
+
+        function displayClassification(classification) {
+            const container = document.getElementById('classification-preview');
+            const details = document.getElementById('classification-details');
+            
+            details.innerHTML = `
+                <div>
+                    <span class="badge bg-primary">${classification.query_type}</span>
+                    <span class="badge bg-secondary">${Math.round(classification.confidence * 100)}% confidence</span>
+                </div>
+                <small class="text-muted">${classification.reasoning}</small>
+            `;
+            
+            container.style.display = 'block';
+        }
+
+        function generateSuggestions(query) {
+            const q = query.toLowerCase();
+            const suggestions = [];
+            
+            if (q.includes('report') || q.includes('summary')) {
+                suggestions.push('Generate a weekly report for the development team');
+                suggestions.push('Create a summary of recent achievements');
+            }
+            
+            if (q.includes('who') || q.includes('what')) {
+                suggestions.push('Who is working on the mobile app?');
+                suggestions.push('What are the current priorities?');
+            }
+            
+            if (q.includes('similar') || q.includes('find')) {
+                suggestions.push('Find updates similar to performance issues');
+                suggestions.push('Show me related database problems');
+            }
+            
+            return suggestions.slice(0, 3);
+        }
+
+        function displaySuggestions(suggestions) {
+            const container = document.getElementById('suggestions-container');
+            const list = document.getElementById('suggestions-list');
+            
+            if (suggestions.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            list.innerHTML = suggestions.map(s => 
+                `<div class="suggestion-item" onclick="setQuery('${s}')">${s}</div>`
+            ).join('');
+            
+            container.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

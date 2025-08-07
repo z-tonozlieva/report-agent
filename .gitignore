@@ -6,3 +6,8 @@ PM_Reporting_Tool.ipynb
 mock_data
 CLAUDE.md
 docker-setup.md
+=*
+.claude
+*.tar
+*.sh
+chroma_db

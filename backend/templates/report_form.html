@@ -1,34 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Generate Report</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Report - PM Reporting Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .report-form {
-            max-width: 400px;
-            margin: 60px auto;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 12px #e0e0e0;
-            padding: 36px 28px;
-        }
-        .report-form label {
-            display: block;
-            margin: 18px 0 8px 0;
-        }
-        .report-form button {
-            margin-top: 18px;
-        }
-        .report-form textarea {
-            width: 100%;
-            padding: 8px;
-            margin-top: 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-family: inherit;
-            resize: vertical;
-        }
-        
         .loading-spinner {
             display: none;
             text-align: center;
@@ -57,31 +35,96 @@
     </style>
 </head>
 <body>
-    <div class="report-form">
-        <h1>Generate Report</h1>
-        <form action="/generate_report" method="post" id="reportForm">
-            <label>Start Date:
-                <input type="date" name="start_date" required>
-            </label>
-            <label>End Date:
-                <input type="date" name="end_date" required>
-            </label>
-            <label>Custom Prompt (optional):
-                <textarea name="custom_prompt" rows="6" placeholder="Enter a custom prompt for report generation, or leave blank to use the default prompt. The system will automatically append team update data to your prompt."></textarea>
-            </label>
-            <button type="submit" id="submitBtn">Generate</button>
-        </form>
-        
-        <div class="loading-spinner" id="loadingSpinner">
-            <div class="spinner"></div>
-            <div class="loading-text">
-                Generating report... This may take up to 60 seconds on the free tier due to cold start.
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-chart-line"></i> PM Reporting Tool
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/updates">Updates</a>
+                <a class="nav-link active" href="/generate_report">Reports</a>
+                <a class="nav-link" href="/intelligent_ask_page">Intelligent Q&A</a>
+                <a class="nav-link" href="/stats">Stats</a>
             </div>
         </div>
-        <hr>
-        <a href="/">Back to Home</a>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4><i class="fas fa-file-alt"></i> Generate Report</h4>
+                        <p class="mb-0">Create comprehensive reports from team updates within a date range</p>
+                    </div>
+                    <div class="card-body">
+                        <form action="/generate_report" method="post" id="reportForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="start_date" class="form-label">Start Date</label>
+                                        <input type="date" class="form-control" id="start_date" name="start_date" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="end_date" class="form-label">End Date</label>
+                                        <input type="date" class="form-control" id="end_date" name="end_date" required>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="report_type" class="form-label">Report Type</label>
+                                <select class="form-select" id="report_type" name="report_type">
+                                    <option value="weekly">Weekly Summary</option>
+                                    <option value="project">Project Status</option>
+                                    <option value="blockers">Blockers & Issues</option>
+                                    <option value="achievements">Achievements</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="custom_prompt" class="form-label">
+                                    Custom Prompt <small class="text-muted">(optional)</small>
+                                </label>
+                                <textarea class="form-control" id="custom_prompt" name="custom_prompt" rows="4" 
+                                        placeholder="Enter a custom prompt for report generation, or leave blank to use the default prompt. The system will automatically append team update data to your prompt."></textarea>
+                            </div>
+                            
+                            <button type="submit" id="submitBtn" class="btn btn-primary w-100">
+                                <i class="fas fa-cog"></i> Generate Report
+                            </button>
+                        </form>
+                        
+                        <div class="loading-spinner" id="loadingSpinner">
+                            <div class="spinner"></div>
+                            <div class="loading-text">
+                                Generating report... This may take up to 60 seconds on the free tier due to cold start.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6><i class="fas fa-info-circle"></i> Report Types</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="small mb-0">
+                            <li><strong>Weekly Summary:</strong> Comprehensive overview of team activities</li>
+                            <li><strong>Project Status:</strong> Focus on project progress and milestones</li>
+                            <li><strong>Blockers & Issues:</strong> Highlight challenges and obstacles</li>
+                            <li><strong>Achievements:</strong> Showcase completed work and successes</li>
+                            <li><strong>Custom:</strong> Use your own prompt for specific reporting needs</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.getElementById('reportForm').addEventListener('submit', function(e) {
             // Show loading spinner
@@ -90,7 +133,7 @@
             // Disable the submit button to prevent double submission
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Generating...';
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
         });
     </script>
 </body>

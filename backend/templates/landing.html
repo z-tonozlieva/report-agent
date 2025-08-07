@@ -1,89 +1,101 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PM Reporting Tool</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <style>
-        .centered {
-            max-width: 400px;
-            margin: 80px auto;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 12px #e0e0e0;
-            padding: 40px 32px;
-            text-align: center;
-        }
-        .main-links a, .main-links form button {
-            display: block;
-            margin: 18px 0;
-            font-size: 1.1em;
-            padding: 12px 0;
-            background: #3498db;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            text-decoration: none;
-            transition: background 0.2s;
-        }
-        .main-links a:hover, .main-links form button:hover {
-            background: #217dbb;
-        }
-        .ask-section {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid #e9ecef;
-        }
-        .ask-section h3 {
-            margin: 0 0 15px 0;
-            color: #495057;
-            font-size: 1.1em;
-        }
-        .ask-form {
-            display: flex;
-            gap: 10px;
-            align-items: stretch;
-        }
-        .ask-form input[type="text"] {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .ask-form button {
-            padding: 10px 20px;
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 14px;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-        .ask-form button:hover {
-            background: #218838;
-        }
-    </style>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="centered">
-        <h1>PM Reporting Tool</h1>
-        <div class="main-links">
-            <a href="/updates">View Recent Updates</a>
-            <a href="/manage_updates">Manage Updates</a>
-            <a href="/generate_report">Generate Report</a>
-            <a href="/stats">View Team Stats</a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-chart-line"></i> PM Reporting Tool
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/updates">Updates</a>
+                <a class="nav-link" href="/generate_report">Reports</a>
+                <a class="nav-link" href="/intelligent_ask_page">Intelligent Q&A</a>
+                <a class="nav-link" href="/stats">Stats</a>
+            </div>
         </div>
-        
-        <div class="ask-section">
-            <h3>💬 Ask a Question</h3>
-            <form action="/ask" method="post" class="ask-form">
-                <input type="text" name="question" placeholder="Ask about your team updates..." required>
-                <button type="submit">Ask</button>
-            </form>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white text-center">
+                        <h1><i class="fas fa-chart-line"></i> PM Reporting Tool</h1>
+                        <p class="mb-0">Streamline team updates and generate comprehensive reports</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <a href="/updates" class="btn btn-outline-primary btn-lg w-100 text-start">
+                                    <i class="fas fa-list me-2"></i>
+                                    <div>
+                                        <strong>View Recent Updates</strong>
+                                        <small class="d-block text-muted">Browse all team updates</small>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <a href="/manage_updates" class="btn btn-outline-success btn-lg w-100 text-start">
+                                    <i class="fas fa-plus me-2"></i>
+                                    <div>
+                                        <strong>Manage Updates</strong>
+                                        <small class="d-block text-muted">Add or import updates</small>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <a href="/generate_report" class="btn btn-outline-info btn-lg w-100 text-start">
+                                    <i class="fas fa-file-alt me-2"></i>
+                                    <div>
+                                        <strong>Generate Report</strong>
+                                        <small class="d-block text-muted">Create comprehensive reports</small>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <a href="/intelligent_ask_page" class="btn btn-outline-purple btn-lg w-100 text-start" style="--bs-btn-color: #8e44ad; --bs-btn-border-color: #8e44ad; --bs-btn-hover-bg: #8e44ad;">
+                                    <i class="fas fa-brain me-2"></i>
+                                    <div>
+                                        <strong>Intelligent Q&A</strong>
+                                        <small class="d-block text-muted">Ask questions with AI routing</small>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <a href="/stats" class="btn btn-outline-warning btn-lg w-100 text-start">
+                                    <i class="fas fa-chart-bar me-2"></i>
+                                    <div>
+                                        <strong>View Team Stats</strong>
+                                        <small class="d-block text-muted">Team metrics and insights</small>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h6><i class="fas fa-info-circle"></i> About This Tool</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="small mb-0">
+                            The PM Reporting Tool helps teams aggregate status updates and generate comprehensive reports. 
+                            Use the Intelligent Q&A feature to ask questions about your team's progress and get AI-powered insights.
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html> 

@@ -14,3 +14,7 @@ markdown>=3.4.0
 # LLM integration - Groq only
 langchain-core>=0.1.50
 langchain-groq>=0.1.4
+
+# Vector database and embeddings
+chromadb>=0.4.0
+sentence-transformers>=2.2.0

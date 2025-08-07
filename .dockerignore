@@ -80,6 +80,9 @@ Dockerfile*
 *.db
 updates.db
 
+# Don't copy local vector DB (will be created in container)
+chroma_db/
+
 # Development dependencies
 requirements-dev.txt
 
