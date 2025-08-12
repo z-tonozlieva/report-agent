@@ -12,8 +12,6 @@
         .method-icon { margin-right: 8px; }
         .confidence-bar { height: 20px; background: #e9ecef; border-radius: 10px; }
         .confidence-fill { height: 100%; border-radius: 10px; transition: width 0.3s; }
-        .suggestion-item { cursor: pointer; padding: 8px; border-radius: 4px; margin: 2px 0; }
-        .suggestion-item:hover { background-color: #f8f9fa; }
         .routing-info { background-color: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 15px; }
         .method-factual { color: #28a745; }
         .method-semantic { color: #17a2b8; }
@@ -49,13 +47,8 @@
                                 <label for="question" class="form-label">Your Question</label>
                                 <textarea class="form-control" id="question" name="question" rows="3" 
                                         placeholder="Ask anything about team updates, reports, or specific insights..."
-                                        value="{{ question or '' }}" oninput="getQuerySuggestions()"></textarea>
+                                        value="{{ question or '' }}"></textarea>
                                 
-                                <!-- Query Suggestions -->
-                                <div id="suggestions-container" style="display: none;" class="mt-2">
-                                    <small class="text-muted">Suggestions:</small>
-                                    <div id="suggestions-list"></div>
-                                </div>
                             </div>
                             
                             <div class="row">
@@ -65,7 +58,7 @@
                                     </label>
                                     <select class="form-select" name="method_override">
                                         <option value="">Auto-detect (recommended)</option>
-                                        <option value="factual">Factual (direct Q&A)</option>
+                                        <option value="factual">Factual (direct Q&A - uses ALL data)</option>
                                         <option value="semantic">Semantic (similarity search)</option>
                                         <option value="analytical">Analytical (deep reasoning)</option>
                                     </select>
@@ -194,33 +187,47 @@
                     </div>
                     <div class="card-body">
                         <h6 class="method-factual"><i class="fas fa-question-circle"></i> Factual Queries</h6>
+                        <div class="alert alert-info alert-sm py-2 px-3 mb-2" style="font-size: 0.85em;">
+                            <i class="fas fa-info-circle"></i> <strong>Smart Filtering:</strong> Factual queries automatically detect timeframes (e.g., "current", "recent") and filter data accordingly.
+                        </div>
                         <ul class="list-unstyled mb-3">
-                            <li class="suggestion-item" onclick="setQuery('Who is working on the payment integration?')">
-                                Who is working on the payment integration?
+                            <li class="suggestion-item" onclick="setQuery('Who is currently working on --example--?')">
+                                Who is currently working on --example--?
                             </li>
-                            <li class="suggestion-item" onclick="setQuery('What are the current blockers?')">
-                                What are the current blockers?
+                            <li class="suggestion-item" onclick="setQuery('What are the current blockers for the team?')">
+                                What are the current blockers for the team?
+                            </li>
+                            <li class="suggestion-item" onclick="setQuery('List all recent updates about --example--')">
+                                List all recent updates about --example--
+                            </li>
+                            <li class="suggestion-item" onclick="setQuery('What progress was made this week?')">
+                                What progress was made this week?
                             </li>
                         </ul>
 
                         <h6 class="method-semantic"><i class="fas fa-search"></i> Semantic Queries</h6>
                         <ul class="list-unstyled mb-3">
-                            <li class="suggestion-item" onclick="setQuery('Find updates similar to authentication issues')">
-                                Find updates similar to authentication issues
+                            <li class="suggestion-item" onclick="setQuery('Show me recent updates about performance issues')">
+                                Show me recent updates about performance issues
                             </li>
-                            <li class="suggestion-item" onclick="setQuery('Show me common themes across the team')">
-                                Show me common themes across the team
+                            <li class="suggestion-item" onclick="setQuery('Find latest updates similar to --example topic--')">
+                                Find latest updates similar to --example topic--
+                            </li>
+                            <li class="suggestion-item" onclick="setQuery('What are common themes across this week?')">
+                                What are common themes across this week?
                             </li>
                         </ul>
 
-
                         <h6 class="method-analytical"><i class="fas fa-brain"></i> Analytical Queries</h6>
                         <ul class="list-unstyled">
-                            <li class="suggestion-item" onclick="setQuery('Why are there delays in the project?')">
-                                Why are there delays in the project?
+                            <li class="suggestion-item" onclick="setQuery('Why are there recurring issues with deployment?')">
+                                Why are there recurring issues with deployment?
                             </li>
-                            <li class="suggestion-item" onclick="setQuery('Analyze the impact of recent blockers')">
-                                Analyze the impact of recent blockers
+                            <li class="suggestion-item" onclick="setQuery('Analyze the impact of recent technical challenges')">
+                                Analyze the impact of recent technical challenges
+                            </li>
+                            <li class="suggestion-item" onclick="setQuery('What patterns emerge from team productivity data?')">
+                                What patterns emerge from team productivity data?
                             </li>
                         </ul>
                     </div>
@@ -231,11 +238,19 @@
                         <h6><i class="fas fa-info-circle"></i> How It Works</h6>
                     </div>
                     <div class="card-body">
-                        <p class="small">The intelligent router analyzes your question and automatically chooses the best method:</p>
+                        <p class="small">The intelligent router uses AI and machine learning to analyze your question and automatically chooses the best method:</p>
                         <ul class="small">
-                            <li><strong class="method-factual">Factual:</strong> For direct questions about specific data</li>
-                            <li><strong class="method-semantic">Semantic:</strong> For finding similar content or themes</li>
-                            <li><strong class="method-analytical">Analytical:</strong> For complex reasoning and insights</li>
+                            <li><strong class="method-factual">Factual:</strong> Uses Large Language Models (LLMs) for direct Q&A <em>(processes ALL database updates)</em></li>
+                            <li><strong class="method-semantic">Semantic:</strong> Uses vector embeddings and similarity search to find related content</li>
+                            <li><strong class="method-analytical">Analytical:</strong> Combines semantic search with LLM reasoning for deep insights</li>
+                        </ul>
+                        <hr class="my-2">
+                        <p class="small mb-2"><strong>Technology Stack:</strong></p>
+                        <ul class="small mb-0">
+                            <li><strong>NLP Classification:</strong> Regex patterns + keyword analysis for query routing</li>
+                            <li><strong>Vector Search:</strong> Embeddings-based semantic similarity matching</li>
+                            <li><strong>LLM Integration:</strong> Groq API with Llama models for text generation</li>
+                            <li><strong>Hybrid Approach:</strong> Combines multiple AI techniques for optimal results</li>
                         </ul>
                     </div>
                 </div>
@@ -250,25 +265,6 @@
             classifyQuery(query);
         }
 
-        let suggestionTimeout;
-        function getQuerySuggestions() {
-            clearTimeout(suggestionTimeout);
-            const query = document.getElementById('question').value.trim();
-            
-            if (query.length < 3) {
-                document.getElementById('suggestions-container').style.display = 'none';
-                return;
-            }
-            
-            suggestionTimeout = setTimeout(() => {
-                // Classify query for preview
-                classifyQuery(query);
-                
-                // Get suggestions (simplified for demo)
-                const suggestions = generateSuggestions(query);
-                displaySuggestions(suggestions);
-            }, 500);
-        }
 
         function classifyQuery(query) {
             if (query.length < 5) return;
@@ -302,43 +298,7 @@
             container.style.display = 'block';
         }
 
-        function generateSuggestions(query) {
-            const q = query.toLowerCase();
-            const suggestions = [];
-            
-            if (q.includes('report') || q.includes('summary')) {
-                suggestions.push('Generate a weekly report for the development team');
-                suggestions.push('Create a summary of recent achievements');
-            }
-            
-            if (q.includes('who') || q.includes('what')) {
-                suggestions.push('Who is working on the mobile app?');
-                suggestions.push('What are the current priorities?');
-            }
-            
-            if (q.includes('similar') || q.includes('find')) {
-                suggestions.push('Find updates similar to performance issues');
-                suggestions.push('Show me related database problems');
-            }
-            
-            return suggestions.slice(0, 3);
-        }
 
-        function displaySuggestions(suggestions) {
-            const container = document.getElementById('suggestions-container');
-            const list = document.getElementById('suggestions-list');
-            
-            if (suggestions.length === 0) {
-                container.style.display = 'none';
-                return;
-            }
-            
-            list.innerHTML = suggestions.map(s => 
-                `<div class="suggestion-item" onclick="setQuery('${s}')">${s}</div>`
-            ).join('');
-            
-            container.style.display = 'block';
-        }
     </script>
 </body>
 </html>

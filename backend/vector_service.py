@@ -27,18 +27,20 @@ class VectorService:
         """Initialize ChromaDB client and embedding model"""
         try:
             # Initialize ChromaDB with persistence
-            logger.info(f"Initializing ChromaDB with persist directory: {self.persist_directory}")
+            logger.info(
+                f"Initializing ChromaDB with persist directory: {self.persist_directory}"
+            )
             self.client = chromadb.PersistentClient(path=self.persist_directory)
 
             # Get or create collection for updates
             self.collection = self.client.get_or_create_collection(
                 name="updates",
-                metadata={"description": "Team status updates with embeddings"}
+                metadata={"description": "Team status updates with embeddings"},
             )
 
             # Initialize embedding model (runs locally, no API costs)
             logger.info("Loading sentence transformer model...")
-            self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+            self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
             logger.info("Vector service initialized successfully")
 
         except Exception as e:
@@ -57,7 +59,9 @@ class VectorService:
         """Add an update to the vector database"""
         try:
             # Create a comprehensive text for embedding
-            full_text = f"{update.employee} ({update.role}) on {update.date}: {update.update}"
+            full_text = (
+                f"{update.employee} ({update.role}) on {update.date}: {update.update}"
+            )
 
             # Generate embedding
             embedding = self.generate_embedding(update.update)
@@ -65,20 +69,26 @@ class VectorService:
             # Create unique ID
             # Create unique ID using content hash and timestamp
             content_hash = hashlib.md5(update.update.encode()).hexdigest()[:8]
-            timestamp_hash = hashlib.md5(f"{update.employee}_{update.date}_{update.role}".encode()).hexdigest()[:6]
-            update_id = f"{update.employee}_{update.date}_{content_hash}_{timestamp_hash}"
+            timestamp_hash = hashlib.md5(
+                f"{update.employee}_{update.date}_{update.role}".encode()
+            ).hexdigest()[:6]
+            update_id = (
+                f"{update.employee}_{update.date}_{content_hash}_{timestamp_hash}"
+            )
 
             # Add to collection with metadata
             self.collection.add(
                 embeddings=[embedding],
                 documents=[update.update],
-                metadatas=[{
-                    "employee": update.employee,
-                    "role": update.role,
-                    "date": update.date,
-                    "full_text": full_text
-                }],
-                ids=[update_id]
+                metadatas=[
+                    {
+                        "employee": update.employee,
+                        "role": update.role,
+                        "date": update.date,
+                        "full_text": full_text,
+                    }
+                ],
+                ids=[update_id],
             )
 
             logger.info(f"Added update to vector DB: {update_id}")
@@ -103,28 +113,36 @@ class VectorService:
                     # Generate embedding
                     embedding = self.generate_embedding(update.update)
                     full_text = f"{update.employee} ({update.role}) on {update.date}: {update.update}"
-                    
-                    # Create unique ID using content hash and timestamp  
+
+                    # Create unique ID using content hash and timestamp
                     content_hash = hashlib.md5(update.update.encode()).hexdigest()[:8]
-                    timestamp_hash = hashlib.md5(f"{update.employee}_{update.date}_{update.role}".encode()).hexdigest()[:6]
+                    timestamp_hash = hashlib.md5(
+                        f"{update.employee}_{update.date}_{update.role}".encode()
+                    ).hexdigest()[:6]
                     update_id = f"{update.employee}_{update.date}_{content_hash}_{timestamp_hash}"
-                    
+
                     # Check if this ID is already in our batch to prevent duplicates
                     if update_id not in ids:
                         embeddings.append(embedding)
                         documents.append(update.update)
-                        metadatas.append({
-                            "employee": update.employee,
-                            "role": update.role,
-                            "date": update.date,
-                            "full_text": full_text
-                        })
+                        metadatas.append(
+                            {
+                                "employee": update.employee,
+                                "role": update.role,
+                                "date": update.date,
+                                "full_text": full_text,
+                            }
+                        )
                         ids.append(update_id)
                     else:
-                        logger.warning(f"Skipping duplicate update ID in batch: {update_id}")
+                        logger.warning(
+                            f"Skipping duplicate update ID in batch: {update_id}"
+                        )
 
                 except Exception as e:
-                    logger.warning(f"Failed to process update for {update.employee}: {str(e)}")
+                    logger.warning(
+                        f"Failed to process update for {update.employee}: {str(e)}"
+                    )
                     continue
 
             if embeddings:
@@ -132,7 +150,7 @@ class VectorService:
                     embeddings=embeddings,
                     documents=documents,
                     metadatas=metadatas,
-                    ids=ids
+                    ids=ids,
                 )
                 success_count = len(embeddings)
                 logger.info(f"Added {success_count} updates to vector DB in batch")
@@ -142,7 +160,9 @@ class VectorService:
 
         return success_count
 
-    def semantic_search(self, query: str, limit: int = 10, filters: Optional[Dict] = None) -> List[Dict[str, Any]]:
+    def semantic_search(
+        self, query: str, limit: int = 10, filters: Optional[Dict] = None
+    ) -> List[Dict[str, Any]]:
         """Perform semantic search on updates"""
         try:
             # Generate query embedding
@@ -165,15 +185,15 @@ class VectorService:
                 query_embeddings=[query_embedding],
                 n_results=limit,
                 where=where_clause if where_clause else None,
-                include=["documents", "metadatas", "distances"]
+                include=["documents", "metadatas", "distances"],
             )
 
             # Format results
             formatted_results = []
-            if results and results['documents']:
-                for i, doc in enumerate(results['documents'][0]):
-                    metadata = results['metadatas'][0][i]
-                    distance = results['distances'][0][i]
+            if results and results["documents"]:
+                for i, doc in enumerate(results["documents"][0]):
+                    metadata = results["metadatas"][0][i]
+                    distance = results["distances"][0][i]
 
                     # Apply date filtering if specified
                     if filters and "date_from" in filters and "date_to" in filters:
@@ -184,14 +204,17 @@ class VectorService:
                         if not (date_from <= update_date <= date_to):
                             continue
 
-                    formatted_results.append({
-                        "document": doc,
-                        "metadata": metadata,
-                        "similarity_score": 1 - distance,  # Convert distance to similarity
-                        "employee": metadata["employee"],
-                        "role": metadata["role"],
-                        "date": metadata["date"]
-                    })
+                    formatted_results.append(
+                        {
+                            "document": doc,
+                            "metadata": metadata,
+                            "similarity_score": 1
+                            - distance,  # Convert distance to similarity
+                            "employee": metadata["employee"],
+                            "role": metadata["role"],
+                            "date": metadata["date"],
+                        }
+                    )
 
             logger.info(f"Semantic search returned {len(formatted_results)} results")
             return formatted_results
@@ -200,7 +223,9 @@ class VectorService:
             logger.error(f"Semantic search failed: {str(e)}")
             return []
 
-    def find_similar_updates(self, update_text: str, limit: int = 5) -> List[Dict[str, Any]]:
+    def find_similar_updates(
+        self, update_text: str, limit: int = 5
+    ) -> List[Dict[str, Any]]:
         """Find updates similar to the given update text"""
         return self.semantic_search(update_text, limit=limit)
 
@@ -211,20 +236,33 @@ class VectorService:
             results = self.collection.query(
                 query_embeddings=[self.generate_embedding("general update")],
                 n_results=limit,
-                include=["documents"]
+                include=["documents"],
             )
 
-            if not results or not results['documents']:
+            if not results or not results["documents"]:
                 return []
 
             # Simple keyword extraction (can be enhanced with more sophisticated NLP)
-            documents = results['documents'][0]
+            documents = results["documents"][0]
             themes = []
 
             common_keywords = [
-                "payment", "integration", "testing", "mobile", "dashboard",
-                "API", "database", "authentication", "UI", "UX", "frontend",
-                "backend", "deployment", "performance", "bug", "feature"
+                "payment",
+                "integration",
+                "testing",
+                "mobile",
+                "dashboard",
+                "API",
+                "database",
+                "authentication",
+                "UI",
+                "UX",
+                "frontend",
+                "backend",
+                "deployment",
+                "performance",
+                "bug",
+                "feature",
             ]
 
             for keyword in common_keywords:
@@ -245,7 +283,7 @@ class VectorService:
             return {
                 "total_updates": count,
                 "collection_name": self.collection.name,
-                "persist_directory": self.persist_directory
+                "persist_directory": self.persist_directory,
             }
         except Exception as e:
             logger.error(f"Failed to get collection stats: {str(e)}")
@@ -260,7 +298,7 @@ class VectorService:
             # Recreate the collection
             self.collection = self.client.get_or_create_collection(
                 name="updates",
-                metadata={"description": "Team status updates with embeddings"}
+                metadata={"description": "Team status updates with embeddings"},
             )
 
             logger.info("Vector database cleared successfully")

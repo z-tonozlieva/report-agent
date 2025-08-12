@@ -94,11 +94,10 @@ class PMReportingTool:
 
     def generate_report(
         self,
-        report_type: str = "weekly",
         date_range: Optional[Tuple[datetime, datetime]] = None,
         custom_prompt: Optional[str] = None,
     ) -> str:
-        """Generate a report based on aggregated updates with improved prompt engineering and context management"""
+        """Generate a team status report based on updates with improved prompt engineering and context management"""
         # Context management: filter updates by date range and limit to most recent 50
         if date_range:
             start_date, end_date = date_range
@@ -134,9 +133,31 @@ class PMReportingTool:
         # Add context stats
         context_stats = f"[Context: {len(updates)} updates, {len(context)} characters]"
 
-        # Few-shot example with proper heading structure
+        # Use custom prompt if provided, otherwise use default
+        if custom_prompt:
+            prompt = f"""
+            {custom_prompt}
+
+            {context_stats}
+
+            Here are the team updates (delimited by triple backticks):
+            ```
+            {context}
+            ```
+
+            Please generate the report below:
+            """
+        else:
+            # Default prompt engineering: explicit instructions, delimiters, example
+            prompt = self._get_default_prompt(context_stats, context)
+
+        report = self.llm.generate_response(prompt)
+        return report
+
+    def _get_default_prompt(self, context_stats: str, context: str) -> str:
+        """Get the default prompt for report generation"""
         example = (
-            "# Weekly Report\n\n"
+            "# Team Status Report\n\n"
             "## Key Achievements and Progress\n"
             "* Improved API response times by 30% through caching layer implementation\n"
             "* Completed user flow redesign for onboarding process, resulting in 40% improvement in completion rates\n"
@@ -160,58 +181,50 @@ class PMReportingTool:
             "* Address mobile app UI inconsistencies and payment system testing\n"
         )
 
-        # Use custom prompt if provided, otherwise use default
-        if custom_prompt:
-            prompt = f"""
-            {custom_prompt}
+        return f"""
+        You are an expert project manager AI assistant. Based on the following team updates, generate a **Team Status Report** for stakeholders.
 
-            {context_stats}
-            
-            Here are the team updates (delimited by triple backticks):
-            ```
-            {context}
-            ```
-            
-            Please generate the report below:
-            """
-        else:
-            # Default prompt engineering: explicit instructions, delimiters, example
-            prompt = f"""
-            You are an expert project manager AI assistant. Based on the following team updates, generate a **{report_type} report** for stakeholders.
-            
-            {context_stats}
-            
-            Please follow these instructions EXACTLY:
-            - Use **Markdown** formatting with clear headings and bullet points
-            - Start with a main heading: # {report_type.title()} Report
-            - Use ## for section headings (level 2 headings)
-            - Use * for bullet points (NOT - or #)
-            - Structure the report with these EXACT sections:
-              ## Key Achievements and Progress
-              ## Current Focus Areas  
-              ## Blockers or Challenges
-              ## Upcoming Priorities
-            - Add proper spacing: double line breaks after main heading and between sections
-            - Be concise, executive-friendly, and actionable
-            - Only use information provided in the context
-            
-            Here is an example of a good report:
-            {example}
-            
-            ---
-            
-            Here are the team updates (delimited by triple backticks):
-            ```
-            {context}
-            ```
-            
-            Please generate the report below:
-            """
-        report = self.llm.generate_response(prompt)
-        return report
+        {context_stats}
 
-    def answer_stakeholder_question(self, question: str) -> str:
-        """Answer specific questions from stakeholders"""
+        Please follow these instructions EXACTLY:
+        - Use **Markdown** formatting with clear headings and bullet points
+        - Start with a main heading: # Team Status Report
+        - Use ## for section headings (level 2 headings)
+        - Use * for bullet points (NOT - or #)
+        - Structure the report with these EXACT sections:
+          ## Key Achievements and Progress
+          ## Current Focus Areas
+          ## Blockers or Challenges
+          ## Upcoming Priorities
+        - Add proper spacing: double line breaks after main heading and between sections
+        - Be concise, executive-friendly, and actionable
+        - Only use information provided in the context
+
+        Here is an example of a good report:
+        {example}
+
+        ---
+
+        Here are the team updates (delimited by triple backticks):
+        ```
+        {context}
+        ```
+
+        Please generate the report below:
+        """
+
+    def get_default_prompt_preview(self) -> str:
+        """Get a preview of the default prompt for UI display"""
+        return self._get_default_prompt(
+            "[Context: N updates, N characters]", "[Team updates will appear here]"
+        )
+
+    def answer_factual_question_from_all_data(self, question: str) -> str:
+        """Answer factual questions using ALL updates in the database.
+
+        WARNING: This method uses ALL team updates in the database to answer questions.
+        For filtered or contextual queries, use the query router instead.
+        """
         if not self.updates:
             return "No team updates available to answer the question."
 
@@ -225,12 +238,12 @@ class PMReportingTool:
 
         prompt = f"""
         Based on the following team updates, please answer this stakeholder question:
-        
+
         Question: {question}
-        
+
         Team Updates:
         {context}
-        
+
         Please provide a concise, data-driven answer.
         """
 

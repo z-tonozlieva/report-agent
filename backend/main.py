@@ -159,12 +159,23 @@ def generate_report_form(request: Request):
     return templates.TemplateResponse("report_form.html", {"request": request})
 
 
+@app.get("/get_default_prompt")
+async def get_default_prompt():
+    """Get the default prompt for report generation"""
+    try:
+        tool = get_reporting_tool()
+        prompt = tool.get_default_prompt_preview()
+        return {"prompt": prompt, "status": "success"}
+    except Exception as e:
+        logger.error(f"Error getting default prompt: {str(e)}")
+        return {"error": str(e), "status": "error"}
+
+
 @app.post("/generate_report", response_class=HTMLResponse)
 async def generate_report(
     request: Request,
     start_date: str = Form(...),
     end_date: str = Form(...),
-    report_type: str = Form("weekly"),
     custom_prompt: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
@@ -197,25 +208,19 @@ async def generate_report(
                 )
 
             logger.info("Generating report with LLM...")
-            
-            # Use intelligent routing for custom prompts
-            if custom_prompt and custom_prompt.strip():
-                router = get_query_router()
-                vector_service = get_vector_service()
-                
-                router_response = router.route_query(
-                    query=custom_prompt.strip(),
-                    reporting_tool=tool,
-                    vector_service=vector_service,
-                    db_session=db,
-                    override_method="report"  # Force report mode
-                )
-                report = router_response.answer
-            else:
-                report = tool.generate_report(
-                    report_type=report_type,
-                    custom_prompt=None,
-                )
+
+            # Parse dates
+            start_date_obj = datetime.strptime(start_date, "%Y-%m-%d")
+            end_date_obj = datetime.strptime(end_date, "%Y-%m-%d")
+            date_range = (start_date_obj, end_date_obj)
+
+            # Generate report with simplified approach
+            report = tool.generate_report(
+                date_range=date_range,
+                custom_prompt=custom_prompt.strip()
+                if custom_prompt and custom_prompt.strip()
+                else None,
+            )
             logger.info("Report generation completed")
 
             # Force garbage collection to free memory
@@ -283,6 +288,7 @@ def submit_update(
     try:
         vector_service = get_vector_service()
         from .models import Update
+
         vector_update = Update(employee=employee, role=role, date=date, update=update)
         vector_service.add_update(vector_update)
     except Exception as e:
@@ -393,7 +399,7 @@ def ask(request: Request, question: str = Form(...), db: Session = Depends(get_d
             )
         )
 
-    answer = tool.answer_stakeholder_question(question)
+    answer = tool.answer_factual_question_from_all_data(question)
     return templates.TemplateResponse(
         "answer.html", {"request": request, "question": question, "answer": answer}
     )
@@ -493,10 +499,6 @@ def delete_all_updates(request: Request, db: Session = Depends(get_db)):
     return RedirectResponse("/updates", status_code=303)
 
 
-
-
-
-
 @app.get("/intelligent_ask_page", response_class=HTMLResponse)
 def intelligent_ask_page(request: Request):
     return templates.TemplateResponse("intelligent_ask.html", {"request": request})
@@ -507,59 +509,62 @@ async def intelligent_ask_page_results(
     request: Request,
     question: str = Form(...),
     method_override: Optional[str] = Form(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     try:
         # Load updates into reporting tool
         from .models import Update
+
         tool = get_reporting_tool()
         updates = db.query(UpdateDB).all()
         tool.clear_updates()
-        
+
         for u in updates:
-            tool.add_update(Update(
-                employee=str(u.employee),
-                role=str(u.role),
-                date=str(u.date),
-                update=str(u.update)
-            ))
-        
+            tool.add_update(
+                Update(
+                    employee=str(u.employee),
+                    role=str(u.role),
+                    date=str(u.date),
+                    update=str(u.update),
+                )
+            )
+
         # Get services
         vector_service = get_vector_service()
         router = get_query_router()
-        
+
         # Route the query
         response = router.route_query(
             query=question,
             reporting_tool=tool,
             vector_service=vector_service,
             db_session=db,
-            override_method=method_override if method_override else None
+            override_method=method_override if method_override else None,
         )
-        
-        return templates.TemplateResponse("intelligent_ask.html", {
-            "request": request,
-            "question": question,
-            "answer": response.answer,
-            "method_used": response.method_used,
-            "confidence": response.confidence,
-            "classification": response.additional_info.get('classification') if response.additional_info else None,
-            "routing_info": response.additional_info.get('routing_info') if response.additional_info else None
-        })
-        
+
+        return templates.TemplateResponse(
+            "intelligent_ask.html",
+            {
+                "request": request,
+                "question": question,
+                "answer": response.answer,
+                "method_used": response.method_used,
+                "confidence": response.confidence,
+                "classification": response.additional_info.get("classification")
+                if response.additional_info
+                else None,
+                "routing_info": response.additional_info.get("routing_info")
+                if response.additional_info
+                else None,
+            },
+        )
+
     except Exception as e:
         logger.error(f"Intelligent ask page error: {str(e)}")
-        return templates.TemplateResponse("intelligent_ask.html", {
-            "request": request,
-            "question": question,
-            "error": str(e)
-        })
-
-
-
-
-
-
+        return templates.TemplateResponse(
+            "intelligent_ask.html",
+            {"request": request, "question": question, "error": str(e)},
+        )
 
 
 @app.post("/sync_vector_db")
@@ -573,12 +578,13 @@ async def sync_vector_database(db: Session = Depends(get_db)):
 
         # Convert to Update objects
         from .models import Update
+
         updates = [
             Update(
                 employee=str(u.employee),
                 role=str(u.role),
                 date=str(u.date),
-                update=str(u.update)
+                update=str(u.update),
             )
             for u in sql_updates
         ]
@@ -591,7 +597,7 @@ async def sync_vector_database(db: Session = Depends(get_db)):
             "message": f"Synced {synced_count} updates to vector database",
             "total_sql_updates": len(sql_updates),
             "synced_updates": synced_count,
-            "status": "success"
+            "status": "success",
         }
 
     except Exception as e:
@@ -599,60 +605,61 @@ async def sync_vector_database(db: Session = Depends(get_db)):
         return {"error": str(e), "status": "error"}
 
 
-
-
 @app.post("/intelligent_ask")
 async def intelligent_ask(
     question: str = Form(...),
     method_override: Optional[str] = Form(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Intelligent query routing that automatically selects the best approach"""
     try:
         # Load updates into reporting tool
         from .models import Update
+
         tool = get_reporting_tool()
         updates = db.query(UpdateDB).all()
         tool.clear_updates()
-        
+
         for u in updates:
-            tool.add_update(Update(
-                employee=str(u.employee),
-                role=str(u.role),
-                date=str(u.date),
-                update=str(u.update)
-            ))
-        
+            tool.add_update(
+                Update(
+                    employee=str(u.employee),
+                    role=str(u.role),
+                    date=str(u.date),
+                    update=str(u.update),
+                )
+            )
+
         # Get services
         vector_service = get_vector_service()
         router = get_query_router()
-        
+
         # Route the query
         response = router.route_query(
             query=question,
             reporting_tool=tool,
             vector_service=vector_service,
             db_session=db,
-            override_method=method_override
+            override_method=method_override,
         )
-        
+
         return {
             "question": question,
             "answer": response.answer,
             "method_used": response.method_used,
             "confidence": response.confidence,
-            "classification": response.additional_info.get('classification').__dict__ if response.additional_info and 'classification' in response.additional_info else None,
-            "routing_info": response.additional_info.get('routing_info') if response.additional_info else None,
-            "status": "success"
+            "classification": response.additional_info.get("classification").__dict__
+            if response.additional_info and "classification" in response.additional_info
+            else None,
+            "routing_info": response.additional_info.get("routing_info")
+            if response.additional_info
+            else None,
+            "status": "success",
         }
-        
+
     except Exception as e:
         logger.error(f"Intelligent ask error: {str(e)}")
-        return {
-            "error": str(e),
-            "question": question,
-            "status": "error"
-        }
+        return {"error": str(e), "question": question, "status": "error"}
 
 
 @app.post("/classify_query")
@@ -661,42 +668,16 @@ async def classify_query(question: str = Form(...)):
     try:
         router = get_query_router()
         classification = router.classify_query(question)
-        
+
         return {
             "question": question,
             "classification": classification.__dict__,
-            "status": "success"
+            "status": "success",
         }
-        
+
     except Exception as e:
         logger.error(f"Query classification error: {str(e)}")
-        return {
-            "error": str(e),
-            "question": question,
-            "status": "error"
-        }
-
-
-@app.post("/query_suggestions")
-async def get_query_suggestions(partial_query: str = Form(...)):
-    """Get suggestions for query completion"""
-    try:
-        router = get_query_router()
-        suggestions = router.get_query_suggestions(partial_query)
-        
-        return {
-            "partial_query": partial_query,
-            "suggestions": suggestions,
-            "status": "success"
-        }
-        
-    except Exception as e:
-        logger.error(f"Query suggestions error: {str(e)}")
-        return {
-            "error": str(e),
-            "partial_query": partial_query,
-            "status": "error"
-        }
+        return {"error": str(e), "question": question, "status": "error"}
 
 
 if __name__ == "__main__":

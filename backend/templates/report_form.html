@@ -74,23 +74,32 @@
                                 </div>
                             </div>
                             
+                            
                             <div class="mb-3">
-                                <label for="report_type" class="form-label">Report Type</label>
-                                <select class="form-select" id="report_type" name="report_type">
-                                    <option value="weekly">Weekly Summary</option>
-                                    <option value="project">Project Status</option>
-                                    <option value="blockers">Blockers & Issues</option>
-                                    <option value="achievements">Achievements</option>
-                                    <option value="custom">Custom</option>
-                                </select>
+                                <label class="form-label">
+                                    Report Generation Settings
+                                </label>
+                                <div class="card bg-light">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span><strong>Default Prompt Preview</strong></span>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                                onclick="togglePromptPreview()"
+                                                id="toggleBtn">
+                                            <i class="fas fa-eye"></i> Show
+                                        </button>
+                                    </div>
+                                    <div class="card-body" id="promptPreview" style="display: none;">
+                                        <pre class="small text-muted mb-0" id="defaultPromptText">Loading...</pre>
+                                    </div>
+                                </div>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="custom_prompt" class="form-label">
-                                    Custom Prompt <small class="text-muted">(optional)</small>
+                                    Custom Prompt <small class="text-muted">(optional - overrides default)</small>
                                 </label>
-                                <textarea class="form-control" id="custom_prompt" name="custom_prompt" rows="4" 
-                                        placeholder="Enter a custom prompt for report generation, or leave blank to use the default prompt. The system will automatically append team update data to your prompt."></textarea>
+                                <textarea class="form-control" id="custom_prompt" name="custom_prompt" rows="6" 
+                                        placeholder="Enter a custom prompt for report generation, or leave blank to use the default prompt shown above. The system will automatically append team update data to your prompt."></textarea>
                             </div>
                             
                             <button type="submit" id="submitBtn" class="btn btn-primary w-100">
@@ -109,15 +118,15 @@
                 
                 <div class="card mt-3">
                     <div class="card-header">
-                        <h6><i class="fas fa-info-circle"></i> Report Types</h6>
+                        <h6><i class="fas fa-info-circle"></i> How Report Generation Works</h6>
                     </div>
                     <div class="card-body">
                         <ul class="small mb-0">
-                            <li><strong>Weekly Summary:</strong> Comprehensive overview of team activities</li>
-                            <li><strong>Project Status:</strong> Focus on project progress and milestones</li>
-                            <li><strong>Blockers & Issues:</strong> Highlight challenges and obstacles</li>
-                            <li><strong>Achievements:</strong> Showcase completed work and successes</li>
-                            <li><strong>Custom:</strong> Use your own prompt for specific reporting needs</li>
+                            <li><strong>Default Mode:</strong> Uses a structured prompt to generate comprehensive team status reports</li>
+                            <li><strong>Custom Mode:</strong> Provide your own prompt for specific reporting needs or formats</li>
+                            <li><strong>Date Filtering:</strong> Only includes updates within your specified date range</li>
+                            <li><strong>AI Processing:</strong> Uses Large Language Models to analyze and summarize team updates</li>
+                            <li><strong>Output Format:</strong> Generates well-structured Markdown reports ready for stakeholders</li>
                         </ul>
                     </div>
                 </div>
@@ -126,6 +135,42 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        let promptLoaded = false;
+        
+        function togglePromptPreview() {
+            const preview = document.getElementById('promptPreview');
+            const btn = document.getElementById('toggleBtn');
+            
+            if (preview.style.display === 'none') {
+                preview.style.display = 'block';
+                btn.innerHTML = '<i class="fas fa-eye-slash"></i> Hide';
+                
+                // Load prompt if not loaded yet
+                if (!promptLoaded) {
+                    loadDefaultPrompt();
+                }
+            } else {
+                preview.style.display = 'none';
+                btn.innerHTML = '<i class="fas fa-eye"></i> Show';
+            }
+        }
+        
+        async function loadDefaultPrompt() {
+            try {
+                const response = await fetch('/get_default_prompt');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('defaultPromptText').textContent = data.prompt;
+                    promptLoaded = true;
+                } else {
+                    document.getElementById('defaultPromptText').textContent = 'Error loading default prompt: ' + (data.error || 'Unknown error');
+                }
+            } catch (error) {
+                document.getElementById('defaultPromptText').textContent = 'Error loading default prompt: ' + error.message;
+            }
+        }
+        
         document.getElementById('reportForm').addEventListener('submit', function(e) {
             // Show loading spinner
             document.getElementById('loadingSpinner').style.display = 'block';
