@@ -83,3 +83,8 @@ class Config:
         # Load .env only for local development
         cls.load_env_for_development()
         return os.getenv("GROQ_API_KEY")
+
+
+# Export constants for backwards compatibility
+SUPPORTED_ROLES = Config.VALID_ROLES
+SAMPLE_STAKEHOLDER_QUESTIONS = Config.SAMPLE_QUESTIONS

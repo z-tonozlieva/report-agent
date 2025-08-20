@@ -11,7 +11,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.utils.utils import convert_to_secret_str
 from langchain_groq import ChatGroq
 
-from .interfaces import LLMInterface
+from ..core import LLMInterface
 
 
 class LangChainLLMWrapper(LLMInterface):

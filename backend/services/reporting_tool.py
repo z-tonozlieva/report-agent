@@ -5,9 +5,8 @@ from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
+from ..core import AggregatedData, LLMInterface, Update
 from .data_loader import DataLoader
-from .interfaces import LLMInterface
-from .models import AggregatedData, Update
 
 
 class PMReportingTool:
@@ -15,6 +14,7 @@ class PMReportingTool:
 
     def __init__(self, llm: LLMInterface):
         self.llm = llm
+        ## TODO: Do we really want to get app updates?
         self.updates: List[Update] = []
 
     def add_update(self, update: Update) -> None:
