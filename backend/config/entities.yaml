@@ -1,0 +1,204 @@
+# Entity Configuration for Query Intelligence
+# This file defines teams, technologies, and other entities for your organization
+# Customize these based on your company's structure
+
+teams:
+  - name: "Frontend Team"
+    aliases: ["frontend", "ui", "client-side", "web ui", "react team", "vue team"]
+    roles: ["Frontend Developer", "UI Designer", "React Developer", "Vue Developer", "Web Developer"]
+    description: "Responsible for user interfaces and client-side development"
+
+  - name: "Backend Team" 
+    aliases: ["backend", "server", "api", "server-side", "python team", "java team"]
+    roles: ["Backend Developer", "API Developer", "Python Developer", "Java Developer", "Server Developer"]
+    description: "Handles server-side logic and API development"
+
+  - name: "DevOps Team"
+    aliases: ["devops", "infrastructure", "deployment", "ops", "platform", "sre"]
+    roles: ["DevOps Engineer", "Infrastructure Engineer", "Platform Engineer", "SRE"]
+    description: "Manages infrastructure, deployment, and operations"
+
+  - name: "Mobile Team"
+    aliases: ["mobile", "ios", "android", "app", "mobile app"]
+    roles: ["Mobile Developer", "iOS Developer", "Android Developer", "Mobile Engineer"]
+    description: "Develops mobile applications"
+
+  - name: "QA Team"
+    aliases: ["qa", "testing", "quality", "test", "automation"]
+    roles: ["QA Engineer", "Test Engineer", "Automation Engineer", "Quality Analyst"]
+    description: "Handles testing and quality assurance"
+
+  - name: "Design Team"
+    aliases: ["design", "ux", "ui design", "product design", "visual"]
+    roles: ["UX Designer", "UI Designer", "Product Designer", "Visual Designer"]
+    description: "Creates user experience and visual designs"
+
+  - name: "Product Team"
+    aliases: ["product", "product management", "pm", "business"]
+    roles: ["Product Manager", "Product Owner", "Business Analyst"]
+    description: "Manages product strategy and requirements"
+
+  - name: "Data Team"
+    aliases: ["data", "analytics", "data science", "ml", "ai"]
+    roles: ["Data Engineer", "Data Scientist", "Analytics Engineer", "ML Engineer"]
+    description: "Handles data analysis and machine learning"
+
+technologies:
+  # Frontend Technologies
+  - name: "React"
+    aliases: ["react", "reactjs", "react.js"]
+    category: "frontend"
+    
+  - name: "Vue"
+    aliases: ["vue", "vuejs", "vue.js"]
+    category: "frontend"
+    
+  - name: "Angular"
+    aliases: ["angular", "angularjs"]
+    category: "frontend"
+
+  - name: "JavaScript"
+    aliases: ["javascript", "js", "typescript", "ts"]
+    category: "frontend"
+
+  # Backend Technologies  
+  - name: "Python"
+    aliases: ["python", "django", "flask", "fastapi"]
+    category: "backend"
+    
+  - name: "Java"
+    aliases: ["java", "spring", "springboot"]
+    category: "backend"
+    
+  - name: "Node.js"
+    aliases: ["node", "nodejs", "node.js", "express"]
+    category: "backend"
+
+  # Databases
+  - name: "PostgreSQL"
+    aliases: ["postgres", "postgresql", "psql"]
+    category: "database"
+    
+  - name: "MongoDB"
+    aliases: ["mongo", "mongodb"]
+    category: "database"
+    
+  - name: "MySQL"
+    aliases: ["mysql"]
+    category: "database"
+
+  # Infrastructure
+  - name: "Docker"
+    aliases: ["docker", "containerization"]
+    category: "infrastructure"
+    
+  - name: "Kubernetes"
+    aliases: ["k8s", "kubernetes", "kube"]
+    category: "infrastructure"
+    
+  - name: "AWS"
+    aliases: ["aws", "amazon web services", "ec2", "s3"]
+    category: "cloud"
+
+  # Domain-specific
+  - name: "Authentication"
+    aliases: ["auth", "authentication", "login", "oauth", "jwt"]
+    category: "feature"
+    
+  - name: "Payment"
+    aliases: ["payment", "payments", "billing", "checkout", "stripe"]
+    category: "feature"
+    
+  - name: "API"
+    aliases: ["api", "rest", "graphql", "endpoint"]
+    category: "integration"
+
+projects:
+  # Common project patterns - these are examples
+  - name: "Dashboard"
+    aliases: ["dashboard", "admin panel", "control panel"]
+    
+  - name: "Mobile App"
+    aliases: ["mobile app", "ios app", "android app"]
+    
+  - name: "Payment System"
+    aliases: ["payment system", "billing system", "checkout"]
+    
+  - name: "Authentication System"
+    aliases: ["auth system", "login system", "user management"]
+    
+  - name: "API Gateway"
+    aliases: ["api gateway", "gateway", "api proxy"]
+
+focus_areas:
+  # Issues and Problems
+  - name: "Blocker"
+    aliases: ["blocker", "blocked", "blocking", "impediment"]
+    category: "issue"
+    priority: "high"
+    
+  - name: "Bug"
+    aliases: ["bug", "issue", "error", "problem", "defect"]
+    category: "issue"
+    priority: "medium"
+    
+  - name: "Performance Issue"
+    aliases: ["performance", "slow", "latency", "bottleneck"]
+    category: "issue"
+    priority: "medium"
+
+  # Achievements
+  - name: "Completion"
+    aliases: ["completed", "finished", "done", "delivered"]
+    category: "achievement"
+    priority: "high"
+    
+  - name: "Milestone"
+    aliases: ["milestone", "achievement", "success", "launch"]
+    category: "achievement"
+    priority: "high"
+    
+  - name: "Improvement"
+    aliases: ["improved", "enhanced", "optimized", "upgraded"]
+    category: "achievement"
+    priority: "medium"
+
+  # Work Types
+  - name: "Testing"
+    aliases: ["testing", "test", "qa", "validation"]
+    category: "activity"
+    
+  - name: "Deployment"
+    aliases: ["deployment", "deploy", "release", "rollout"]
+    category: "activity"
+    
+  - name: "Integration"
+    aliases: ["integration", "integrate", "connect", "merge"]
+    category: "activity"
+    
+  - name: "Migration"
+    aliases: ["migration", "migrate", "upgrade", "transition"]
+    category: "activity"
+
+# Temporal expressions for better time parsing
+temporal_patterns:
+  relative_time:
+    - pattern: "last week"
+      days_back: 7
+    - pattern: "last month" 
+      days_back: 30
+    - pattern: "last quarter"
+      days_back: 90
+    - pattern: "yesterday"
+      days_back: 1
+
+  quarters:
+    Q1: {start_month: 1, end_month: 3}
+    Q2: {start_month: 4, end_month: 6} 
+    Q3: {start_month: 7, end_month: 9}
+    Q4: {start_month: 10, end_month: 12}
+
+# Organization-specific settings
+organization:
+  name: "Default Organization"
+  # Add any org-specific patterns or overrides here

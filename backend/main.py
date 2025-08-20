@@ -9,7 +9,7 @@ from typing import Optional
 import markdown
 import uvicorn
 from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import Column, Integer, String, create_engine
@@ -128,6 +128,15 @@ def get_query_router():
 async def startup_event():
     logger.info("FastAPI app starting up...")
     logger.info("Database tables created")
+    
+    # Initialize entity configuration
+    try:
+        from .entity_config import initialize_entity_config
+        entity_config = initialize_entity_config()
+        logger.info(f"Entity config loaded: {len(entity_config.teams)} teams, {len(entity_config.technologies)} technologies")
+    except Exception as e:
+        logger.warning(f"Could not load entity config: {str(e)}, using defaults")
+    
     logger.info("App startup complete!")
 
 
@@ -423,6 +432,16 @@ def stats(request: Request, db: Session = Depends(get_db)):
         )
 
     stats = tool.get_summary_stats()
+    
+    # Add vector database stats
+    try:
+        vector_service = get_vector_service()
+        vector_stats = vector_service.get_collection_stats()
+        stats["vector_db"] = vector_stats
+    except Exception as e:
+        logger.warning(f"Could not get vector DB stats: {str(e)}")
+        stats["vector_db"] = {"error": str(e)}
+    
     return templates.TemplateResponse(
         "stats.html", {"request": request, "stats": stats}
     )
@@ -678,6 +697,121 @@ async def classify_query(question: str = Form(...)):
     except Exception as e:
         logger.error(f"Query classification error: {str(e)}")
         return {"error": str(e), "question": question, "status": "error"}
+
+
+@app.get("/download_entity_config")
+async def download_entity_config():
+    """Download the current entity configuration file"""
+    try:
+        from .entity_config import get_entity_config
+        config = get_entity_config()
+        config_path = config.config_path
+        
+        if not os.path.exists(config_path):
+            logger.error(f"Config file not found: {config_path}")
+            return RedirectResponse("/manage_updates?error=Config file not found", status_code=303)
+        
+        return FileResponse(
+            path=config_path,
+            filename="entities.yaml",
+            media_type="application/x-yaml"
+        )
+    except Exception as e:
+        logger.error(f"Error downloading config: {str(e)}")
+        return RedirectResponse(f"/manage_updates?error=Error downloading config: {str(e)}", status_code=303)
+
+
+@app.post("/upload_entity_config")
+async def upload_entity_config(config_file: UploadFile = File(...)):
+    """Upload a new entity configuration file"""
+    try:
+        # Validate file type
+        if not config_file.filename.endswith(('.yaml', '.yml')):
+            return RedirectResponse(
+                "/manage_updates?error=Please upload a YAML file (.yaml or .yml)",
+                status_code=303
+            )
+        
+        # Read and validate file content
+        contents = await config_file.read()
+        
+        try:
+            import yaml
+            yaml_data = yaml.safe_load(contents.decode('utf-8'))
+        except yaml.YAMLError as e:
+            return RedirectResponse(
+                f"/manage_updates?error=Invalid YAML format: {str(e)}",
+                status_code=303
+            )
+        except UnicodeDecodeError:
+            return RedirectResponse(
+                "/manage_updates?error=File must be UTF-8 encoded",
+                status_code=303
+            )
+        
+        # Validate required sections
+        required_sections = ['teams', 'technologies', 'projects', 'focus_areas']
+        missing_sections = [section for section in required_sections if section not in yaml_data]
+        
+        if missing_sections:
+            return RedirectResponse(
+                f"/manage_updates?error=Missing required sections: {', '.join(missing_sections)}",
+                status_code=303
+            )
+        
+        # Validate teams structure (basic validation)
+        try:
+            teams = yaml_data.get('teams', [])
+            for i, team in enumerate(teams):
+                if not isinstance(team, dict):
+                    raise ValueError(f"Team {i} must be an object")
+                if 'name' not in team:
+                    raise ValueError(f"Team {i} missing required 'name' field")
+                if 'aliases' not in team or not isinstance(team['aliases'], list):
+                    raise ValueError(f"Team {i} missing required 'aliases' list")
+        except ValueError as e:
+            return RedirectResponse(
+                f"/manage_updates?error=Invalid teams structure: {str(e)}",
+                status_code=303
+            )
+        
+        # Save the new configuration
+        from .entity_config import get_entity_config
+        config = get_entity_config()
+        
+        # Create backup of current config
+        backup_path = config.config_path + ".backup"
+        if os.path.exists(config.config_path):
+            import shutil
+            shutil.copy2(config.config_path, backup_path)
+            logger.info(f"Created backup at {backup_path}")
+        
+        # Write new config
+        with open(config.config_path, 'w', encoding='utf-8') as f:
+            f.write(contents.decode('utf-8'))
+        
+        # Reload configuration
+        config.reload_config()
+        
+        # Update query router with new config
+        global _query_router
+        if _query_router:
+            _query_router.entity_config = config
+            logger.info("Updated query router with new entity configuration")
+        
+        logger.info(f"Successfully updated entity configuration from {config_file.filename}")
+        
+        return RedirectResponse(
+            f"/manage_updates?success=Successfully uploaded and applied new entity configuration with {len(yaml_data.get('teams', []))} teams and {len(yaml_data.get('technologies', []))} technologies",
+            status_code=303
+        )
+        
+    except Exception as e:
+        logger.error(f"Error uploading config: {str(e)}")
+        return RedirectResponse(
+            f"/manage_updates?error=Error uploading config: {str(e)}",
+            status_code=303
+        )
 
 
 if __name__ == "__main__":

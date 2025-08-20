@@ -66,6 +66,51 @@
                     </div>
                 </div>
 
+
+                <!-- Vector Database Stats -->
+                <div class="card mt-4">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-database"></i> Vector Database Statistics</h5>
+                        <p class="mb-0">Semantic search and embeddings database status</p>
+                    </div>
+                    <div class="card-body">
+                        {% if stats.vector_db.error %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>Vector Database Unavailable:</strong> {{ stats.vector_db.error }}
+                            </div>
+                        {% else %}
+                            <div class="row justify-content-center">
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-cubes fa-3x text-info mb-3"></i>
+                                            <h3 class="mb-1">{{ stats.vector_db.total_updates or 0 }}</h3>
+                                            <p class="mb-0 text-muted">Vectorized Updates</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <h6><i class="fas fa-info-circle"></i> Vector Database Info</h6>
+                                <ul class="list-unstyled mb-0">
+                                    <li><strong>Embedding Model:</strong> sentence-transformers/all-MiniLM-L6-v2</li>
+                                    <li><strong>Purpose:</strong> Enables semantic search for similar updates and intelligent query routing</li>
+                                </ul>
+                            </div>
+                            
+                            {% if stats.total_updates != stats.vector_db.total_updates %}
+                            <div class="alert alert-warning mt-3">
+                                <i class="fas fa-sync-alt"></i>
+                                <strong>Sync Notice:</strong> SQL database has {{ stats.total_updates }} updates, but vector database has {{ stats.vector_db.total_updates }}. 
+                                <a href="/manage_updates" class="alert-link">Consider syncing the vector database</a>.
+                            </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+
                 <div class="card mt-4">
                     <div class="card-header">
                         <h6><i class="fas fa-tools"></i> Quick Actions</h6>

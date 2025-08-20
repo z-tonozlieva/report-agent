@@ -156,6 +156,76 @@
                     </div>
                 </div>
 
+                <!-- Entity Configuration Section -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-cog"></i> Query Intelligence Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Manage team names, technologies, and other entities used for intelligent query parsing. Upload your custom configuration or download the current one.</p>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-download"></i> Download Current Config</h6>
+                                <p class="small text-muted">Get the current entity configuration as a YAML file</p>
+                                <a href="/download_entity_config" class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-download"></i> Download entities.yaml
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-upload"></i> Upload New Config</h6>
+                                <p class="small text-muted">Upload a custom entity configuration file</p>
+                                <form action="/upload_entity_config" method="post" enctype="multipart/form-data" class="d-flex gap-2">
+                                    <input type="file" class="form-control" name="config_file" accept=".yaml,.yml" required>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-upload"></i> Upload
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#configExample">
+                                <i class="fas fa-info-circle"></i> What's in the config file?
+                            </button>
+                            <div class="collapse mt-2" id="configExample">
+                                <div class="alert alert-info">
+                                    <h6>Entity Configuration Features:</h6>
+                                    <ul class="mb-2">
+                                        <li><strong>Teams:</strong> Define team names, aliases, and roles (e.g., "Frontend Team", "Backend Team")</li>
+                                        <li><strong>Technologies:</strong> List technologies used in your organization (React, Python, Docker, etc.)</li>
+                                        <li><strong>Projects:</strong> Common project types (Dashboard, Mobile App, API Gateway)</li>
+                                        <li><strong>Focus Areas:</strong> Issue categories (bugs, blockers, achievements)</li>
+                                    </ul>
+                                    <p class="mb-0"><strong>Benefits:</strong> Customize query intelligence for your organization's specific teams and tech stack!</p>
+                                </div>
+                                <div class="json-example mt-2" style="max-height: 200px; overflow-y: auto;">teams:
+  - name: "Frontend Team"
+    aliases: ["frontend", "ui", "client-side"]
+    roles: ["Frontend Developer", "React Developer"]
+    description: "UI development team"
+
+  - name: "Backend Team"
+    aliases: ["backend", "api", "server-side"]
+    roles: ["Backend Developer", "Python Developer"]
+    description: "Server development team"
+
+technologies:
+  - name: "React"
+    aliases: ["react", "reactjs"]
+    category: "frontend"
+    
+  - name: "Python"
+    aliases: ["python", "django", "flask"]
+    category: "backend"</div>
+                            </div>
+                        </div>
+
+                        <!-- Config Status Alert -->
+                        <div id="configAlert" class="mt-3" style="display: none;"></div>
+                    </div>
+                </div>
+
                 <!-- Quick Actions -->
                 <div class="card mt-4">
                     <div class="card-header">
@@ -251,6 +321,38 @@
                 alertDiv.style.display = 'block';
             }
         }
+
+        // Handle URL parameters for success/error messages from config upload/download
+        window.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const configAlert = document.getElementById('configAlert');
+            
+            if (urlParams.has('success')) {
+                configAlert.innerHTML = `
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>${urlParams.get('success')}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                configAlert.style.display = 'block';
+            }
+            
+            if (urlParams.has('error')) {
+                configAlert.innerHTML = `
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>${urlParams.get('error')}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                configAlert.style.display = 'block';
+            }
+            
+            // Clean URL after showing messages
+            if (urlParams.has('success') || urlParams.has('error')) {
+                const cleanUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+            }
+        });
     </script>
 </body>
 </html>

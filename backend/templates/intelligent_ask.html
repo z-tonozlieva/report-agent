@@ -16,6 +16,18 @@
         .method-factual { color: #28a745; }
         .method-semantic { color: #17a2b8; }
         .method-analytical { color: #dc3545; }
+        .bg-purple { background-color: #a78bfa !important; }
+        .suggestion-item {
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 2px 0;
+            transition: background-color 0.2s;
+        }
+        .suggestion-item:hover {
+            background-color: #f8f9fa;
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
@@ -61,6 +73,7 @@
                                         <option value="factual">Factual (direct Q&A - uses ALL data)</option>
                                         <option value="semantic">Semantic (similarity search)</option>
                                         <option value="analytical">Analytical (deep reasoning)</option>
+                                        <option value="comparison">Comparison Analysis (compare teams/technologies)</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 d-flex align-items-end">
@@ -91,6 +104,8 @@
                                 <i class="fas fa-search method-icon method-semantic"></i>Semantic Search
                             {% elif method_used == 'analytical' %}
                                 <i class="fas fa-brain method-icon method-analytical"></i>Analytical Response
+                            {% elif method_used == 'comparison' %}
+                                <i class="fas fa-balance-scale method-icon" style="color: #a78bfa;"></i>Comparison Analysis
                             {% else %}
                                 <i class="fas fa-robot method-icon"></i>{{ method_used|title }}
                             {% endif %}
@@ -129,6 +144,7 @@
                                         {% if classification.query_type == 'factual' %}bg-success
                                         {% elif classification.query_type == 'semantic' %}bg-info
                                         {% elif classification.query_type == 'analytical' %}bg-danger
+                                        {% elif classification.query_type == 'comparison' %}bg-purple
                                         {% else %}bg-secondary{% endif %}">
                                         {{ classification.query_type|title }}
                                     </span>
@@ -216,12 +232,25 @@
                         </ul>
 
                         <h6 class="method-analytical"><i class="fas fa-brain"></i> Analytical Queries</h6>
-                        <ul class="list-unstyled">
+                        <ul class="list-unstyled mb-3">
                             <li class="suggestion-item" onclick="setQuery('Why are there recurring issues with deployment?')">
                                 Why are there recurring issues with deployment?
                             </li>
                             <li class="suggestion-item" onclick="setQuery('Analyze the impact of recent technical challenges')">
                                 Analyze the impact of recent technical challenges
+                            </li>
+                        </ul>
+
+                        <h6 style="color: #a78bfa;"><i class="fas fa-balance-scale"></i> Comparison Queries</h6>
+                        <ul class="list-unstyled">
+                            <li class="suggestion-item" onclick="setQuery('Compare Frontend Team vs Backend Team performance last month')">
+                                Compare Frontend Team vs Backend Team performance last month
+                            </li>
+                            <li class="suggestion-item" onclick="setQuery('Compare React vs Python project progress this quarter')">
+                                Compare React vs Python project progress this quarter
+                            </li>
+                            <li class="suggestion-item" onclick="setQuery('How does this month compare to last month for blockers?')">
+                                How does this month compare to last month for blockers?
                             </li>
                         </ul>
                     </div>
@@ -237,6 +266,7 @@
                             <li><strong class="method-factual">Factual:</strong> Uses Large Language Models (LLMs) for direct Q&A <em>(processes ALL database updates)</em></li>
                             <li><strong class="method-semantic">Semantic:</strong> Uses vector embeddings and similarity search to find related content</li>
                             <li><strong class="method-analytical">Analytical:</strong> Combines semantic search with LLM reasoning for deep insights</li>
+                            <li><strong style="color: #a78bfa;">Comparison:</strong> Structured analysis comparing teams, technologies, or time periods with context-aware filtering</li>
                         </ul>
                         <hr class="my-2">
                         <p class="small mb-2"><strong>Technology Stack:</strong></p>

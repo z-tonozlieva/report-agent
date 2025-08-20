@@ -3,21 +3,35 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .interfaces import LLMInterface
+from .entity_config import get_entity_config
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class EntityExtraction:
+    """Extracted entities from a query"""
+    
+    projects: Set[str]
+    technologies: Set[str]
+    team_names: Set[str]
+    focus_areas: Set[str]
+    comparison_terms: Set[str]
+    temporal_expressions: Set[str]
 
 
 @dataclass
 class QueryClassification:
     """Classification result for a query"""
 
-    query_type: str  # 'report', 'factual', 'semantic', 'analytical'
+    query_type: str  # 'report', 'factual', 'semantic', 'analytical', 'comparison'
     confidence: float
     reasoning: str
     suggested_params: Dict[str, Any]
+    entities: Optional[EntityExtraction] = None
 
 
 @dataclass
@@ -36,8 +50,11 @@ class SmartQueryRouter:
     def __init__(self, llm: Optional[LLMInterface] = None):
         self.llm = llm
         self.classification_patterns = self._initialize_patterns()
+        self.entity_config = get_entity_config()
         self._cached_employees = set()
         self._cached_roles = set()
+        self._cached_projects = set()
+        self._cached_technologies = set()
 
     def _initialize_patterns(self) -> Dict[str, List[Dict]]:
         """Initialize regex patterns and keywords for query classification"""
@@ -102,12 +119,100 @@ class SmartQueryRouter:
                     "keywords": ["based", "analysis", "data"],
                 },
             ],
+            "comparison": [
+                {
+                    "pattern": r"\b(compare|vs|versus|against|between)\b",
+                    "weight": 0.9,
+                    "keywords": ["team", "performance", "progress", "velocity"],
+                },
+                {
+                    "pattern": r"\b(difference|better|worse|more|less)\s+(than|compared)\b",
+                    "weight": 0.8,
+                    "keywords": ["last", "previous", "other"],
+                },
+            ],
         }
+
+    def extract_entities(self, query: str) -> EntityExtraction:
+        """Extract entities from a query using configurable patterns"""
+        query_lower = query.lower()
+        
+        # Use configuration-based entity extraction
+        projects = self.entity_config.find_matching_projects(query)
+        technologies = self.entity_config.find_matching_technologies(query)
+        team_names = self.entity_config.find_matching_teams(query)
+        focus_areas = self.entity_config.find_matching_focus_areas(query)
+        
+        # Extract comparison terms (keep existing logic)
+        comparison_terms = set()
+        comparison_patterns = [
+            r"\bcompare\s+(\w+(?:\s+\w+)*)\s+(?:vs|versus|against|with|to)\s+(\w+(?:\s+\w+)*)\b",
+            r"\b(\w+(?:\s+\w+)*)\s+vs\s+(\w+(?:\s+\w+)*)\b",
+            r"\bbetween\s+(\w+(?:\s+\w+)*)\s+and\s+(\w+(?:\s+\w+)*)\b",
+        ]
+        
+        for pattern in comparison_patterns:
+            matches = re.findall(pattern, query, re.IGNORECASE)
+            for match in matches:
+                if isinstance(match, tuple):
+                    comparison_terms.update(match)
+        
+        # Extract temporal expressions (keep existing logic)
+        temporal_expressions = set()
+        temporal_patterns = [
+            r"\b(\d+)\s+(sprint|week|month|quarter|day)s?\s+ago\b",
+            r"\b(last|previous|current|this|next)\s+(sprint|week|month|quarter|year)\b",
+            r"\bsince\s+(january|february|march|april|may|june|july|august|september|october|november|december)\b",
+            r"\bbefore\s+(christmas|holidays|vacation|release)\b",
+            r"\bQ[1-4]\s*(?:20\d{2})?\b",
+        ]
+        
+        for pattern in temporal_patterns:
+            matches = re.findall(pattern, query_lower, re.IGNORECASE)
+            if matches:
+                for match in matches:
+                    if isinstance(match, tuple):
+                        temporal_expressions.add(" ".join(match))
+                    else:
+                        temporal_expressions.add(match)
+        
+        # Add cached entities from current data
+        if hasattr(self, '_cached_projects'):
+            for project in self._cached_projects:
+                if project.lower() in query_lower:
+                    projects.add(project)
+        
+        if hasattr(self, '_cached_technologies'):
+            for tech in self._cached_technologies:
+                if tech.lower() in query_lower:
+                    technologies.add(tech)
+        
+        # Check if any employees have team roles
+        for employee in self._cached_employees:
+            # Find if this employee's role matches any team
+            employee_updates = [u for u in getattr(self, '_current_updates', []) if u.employee.lower() == employee]
+            if employee_updates:
+                role = employee_updates[0].role
+                team = self.entity_config.get_team_by_role(role)
+                if team:
+                    team_names.add(team)
+        
+        return EntityExtraction(
+            projects=projects,
+            technologies=technologies,
+            team_names=team_names,
+            focus_areas=focus_areas,
+            comparison_terms=comparison_terms,
+            temporal_expressions=temporal_expressions,
+        )
 
     def classify_query(self, query: str) -> QueryClassification:
         """Classify a query into different types based on patterns and content"""
         query_lower = query.lower()
-        scores = {"report": 0.0, "factual": 0.0, "semantic": 0.0, "analytical": 0.0}
+        scores = {"report": 0.0, "factual": 0.0, "semantic": 0.0, "analytical": 0.0, "comparison": 0.0}
+        
+        # Extract entities first
+        entities = self.extract_entities(query)
 
         # Pattern-based classification
         for query_type, patterns in self.classification_patterns.items():
@@ -142,6 +247,29 @@ class SmartQueryRouter:
             role_pattern, query_lower
         ):
             scores["factual"] += 0.3
+        
+        # Entity-based scoring boosts
+        if entities.comparison_terms:
+            scores["comparison"] += 0.7
+        
+        if entities.technologies:
+            scores["semantic"] += 0.2  # Tech queries often need semantic search
+            if len(entities.technologies) > 1:
+                scores["comparison"] += 0.3  # Multiple techs suggest comparison
+        
+        if entities.focus_areas:
+            if any(area in ["blocker", "issue", "problem", "bug"] for area in entities.focus_areas):
+                scores["analytical"] += 0.3  # Problem analysis
+            if any(area in ["achievement", "success", "completion"] for area in entities.focus_areas):
+                scores["report"] += 0.2  # Achievements go in reports
+        
+        if entities.temporal_expressions:
+            scores["report"] += 0.4  # Time-based queries often want reports
+            if any("ago" in expr for expr in entities.temporal_expressions):
+                scores["comparison"] += 0.2  # Comparing with past
+        
+        if entities.team_names and len(entities.team_names) > 1:
+            scores["comparison"] += 0.4  # Multiple teams suggest comparison
 
         # Determine best classification
         best_type = max(scores, key=scores.get)
@@ -163,6 +291,7 @@ class SmartQueryRouter:
             confidence=min(confidence, 1.0),
             reasoning=reasoning,
             suggested_params=suggested_params,
+            entities=entities,
         )
 
     def _generate_reasoning(
@@ -230,6 +359,77 @@ class SmartQueryRouter:
             # For "this month" queries
             end_date = datetime.now()
             start_date = end_date.replace(day=1)  # First day of current month
+            params["date_range"] = {
+                "start": start_date.strftime("%Y-%m-%d"),
+                "end": end_date.strftime("%Y-%m-%d"),
+            }
+        
+        # Advanced temporal expressions
+        # Handle "N weeks/months/days ago" patterns
+        time_ago_match = re.search(r'\b(\d+)\s+(week|month|day)s?\s+ago\b', query_lower)
+        if time_ago_match:
+            number = int(time_ago_match.group(1))
+            unit = time_ago_match.group(2)
+            end_date = datetime.now()
+            
+            if unit == "day":
+                start_date = end_date - timedelta(days=number)
+            elif unit == "week":
+                start_date = end_date - timedelta(weeks=number)
+            elif unit == "month":
+                # Approximate month calculation
+                start_date = end_date - timedelta(days=number * 30)
+            
+            params["date_range"] = {
+                "start": start_date.strftime("%Y-%m-%d"),
+                "end": end_date.strftime("%Y-%m-%d"),
+            }
+        
+        # Handle "since [month]" patterns
+        since_month_match = re.search(r'\bsince\s+(january|february|march|april|may|june|july|august|september|october|november|december)\b', query_lower)
+        if since_month_match:
+            month_name = since_month_match.group(1)
+            month_map = {
+                "january": 1, "february": 2, "march": 3, "april": 4,
+                "may": 5, "june": 6, "july": 7, "august": 8,
+                "september": 9, "october": 10, "november": 11, "december": 12
+            }
+            
+            current_date = datetime.now()
+            month_num = month_map[month_name]
+            
+            # If the month is in the future, use previous year
+            if month_num > current_date.month:
+                year = current_date.year - 1
+            else:
+                year = current_date.year
+            
+            start_date = datetime(year, month_num, 1)
+            params["date_range"] = {
+                "start": start_date.strftime("%Y-%m-%d"),
+                "end": current_date.strftime("%Y-%m-%d"),
+            }
+        
+        # Handle "Q1/Q2/Q3/Q4" patterns
+        quarter_match = re.search(r'\bQ([1-4])\s*(?:20(\d{2}))?\b', query, re.IGNORECASE)
+        if quarter_match:
+            quarter = int(quarter_match.group(1))
+            year = int("20" + quarter_match.group(2)) if quarter_match.group(2) else datetime.now().year
+            
+            # Calculate quarter start and end dates
+            quarter_start_month = (quarter - 1) * 3 + 1
+            if quarter == 4:
+                quarter_end_month = 12
+                quarter_end_day = 31
+            else:
+                quarter_end_month = quarter * 3
+                quarter_end_day = 30 if quarter_end_month in [4, 6, 9, 11] else 31
+                if quarter_end_month == 2:
+                    quarter_end_day = 29 if year % 4 == 0 else 28
+            
+            start_date = datetime(year, quarter_start_month, 1)
+            end_date = datetime(year, quarter_end_month, quarter_end_day)
+            
             params["date_range"] = {
                 "start": start_date.strftime("%Y-%m-%d"),
                 "end": end_date.strftime("%Y-%m-%d"),
@@ -302,6 +502,14 @@ class SmartQueryRouter:
                     reporting_tool,
                     vector_service,
                     classification.suggested_params,
+                )
+            elif classification.query_type == "comparison":
+                answer, additional_info = self._handle_comparison_query(
+                    query,
+                    reporting_tool,
+                    vector_service,
+                    classification.suggested_params,
+                    classification.entities,
                 )
             else:  # factual
                 answer, additional_info = self._handle_factual_query(
@@ -521,6 +729,147 @@ class SmartQueryRouter:
 
         return answer, additional_info
 
+    def _handle_comparison_query(
+        self,
+        query: str,
+        reporting_tool,
+        vector_service,
+        params: Dict[str, Any],
+        entities: Optional[EntityExtraction] = None,
+    ) -> Tuple[str, Dict[str, Any]]:
+        """Handle comparison queries that compare teams, technologies, time periods, etc."""
+        
+        if not entities:
+            # Fallback to analytical query
+            return self._handle_analytical_query(query, reporting_tool, vector_service, params)
+        
+        # Identify what's being compared
+        comparison_context = []
+        comparison_filters = []
+        
+        # Team comparison
+        if len(entities.team_names) > 1:
+            team_list = list(entities.team_names)
+            comparison_context.append(f"Comparing teams: {', '.join(team_list)}")
+            
+            # Get updates for each team
+            team_data = {}
+            for team in team_list:
+                team_updates = [
+                    update for update in reporting_tool.updates
+                    if team.lower() in update.update.lower() or team.lower() in update.role.lower()
+                ]
+                team_data[team] = team_updates
+            
+            comparison_filters.append({"type": "team", "data": team_data})
+        
+        # Technology comparison
+        if len(entities.technologies) > 1:
+            tech_list = list(entities.technologies)
+            comparison_context.append(f"Comparing technologies: {', '.join(tech_list)}")
+            
+            # Get updates mentioning each technology
+            tech_data = {}
+            for tech in tech_list:
+                tech_updates = [
+                    update for update in reporting_tool.updates
+                    if tech.lower() in update.update.lower()
+                ]
+                tech_data[tech] = tech_updates
+            
+            comparison_filters.append({"type": "technology", "data": tech_data})
+        
+        # Time period comparison (if temporal expressions suggest comparison)
+        if entities.temporal_expressions and any("ago" in expr for expr in entities.temporal_expressions):
+            comparison_context.append("Comparing time periods")
+        
+        # Role comparison
+        if entities.comparison_terms:
+            terms = list(entities.comparison_terms)
+            # Check if comparison terms match roles/employees
+            role_matches = []
+            employee_matches = []
+            
+            for term in terms:
+                if term.lower() in self._cached_roles:
+                    role_matches.append(term)
+                elif term.lower() in self._cached_employees:
+                    employee_matches.append(term)
+            
+            if role_matches:
+                comparison_context.append(f"Comparing roles: {', '.join(role_matches)}")
+            if employee_matches:
+                comparison_context.append(f"Comparing employees: {', '.join(employee_matches)}")
+        
+        # Build comparison prompt
+        if comparison_context:
+            context_description = "; ".join(comparison_context)
+        else:
+            context_description = "General comparison analysis"
+        
+        # Get relevant data using semantic search for context
+        semantic_results = vector_service.semantic_search(query, limit=15)
+        
+        # Create enhanced prompt for comparison
+        if semantic_results:
+            context_updates = []
+            for result in semantic_results[:10]:  # Top 10 for context
+                context_updates.append(
+                    f"{result['employee']} ({result['role']}, {result['date']}): {result['document']}"
+                )
+            
+            comparison_prompt = f"""
+            {query}
+            
+            Context: {context_description}
+            
+            Please provide a detailed comparison analysis based on the following team updates:
+            
+            {chr(10).join(context_updates)}
+            
+            Structure your response to clearly compare the requested items, highlighting:
+            - Key differences and similarities
+            - Performance or progress indicators
+            - Specific examples from the data
+            - Trends or patterns
+            
+            Provide a comprehensive comparison analysis.
+            """
+        else:
+            # Fallback to all data analysis
+            all_updates_context = "\n".join([
+                f"{update.employee} ({update.role}, {update.date}): {update.update}"
+                for update in reporting_tool.updates[-20:]  # Last 20 updates
+            ])
+            
+            comparison_prompt = f"""
+            {query}
+            
+            Context: {context_description}
+            
+            Based on the following team updates, provide a detailed comparison analysis:
+            
+            {all_updates_context}
+            
+            Please structure your response to clearly compare the requested items.
+            """
+        
+        answer = reporting_tool.llm.generate_response(comparison_prompt)
+        
+        additional_info = {
+            "method": "comparison_analysis",
+            "comparison_context": comparison_context,
+            "entities_found": {
+                "teams": list(entities.team_names) if entities.team_names else [],
+                "technologies": list(entities.technologies) if entities.technologies else [],
+                "comparison_terms": list(entities.comparison_terms) if entities.comparison_terms else [],
+            },
+            "semantic_context_used": len(semantic_results) > 0,
+            "comparison_filters": len(comparison_filters),
+        }
+        
+        return answer, additional_info
+
     def _format_semantic_results(
         self, query: str, results: List[Dict[str, Any]]
     ) -> str:
@@ -580,8 +929,11 @@ class SmartQueryRouter:
         return "\n".join(answer_parts)
 
     def update_dynamic_patterns(self, reporting_tool) -> None:
-        """Update employee and role patterns from current data"""
+        """Update employee, role, project and technology patterns from current data"""
         if hasattr(reporting_tool, "updates") and reporting_tool.updates:
+            # Store current updates for team role matching
+            self._current_updates = reporting_tool.updates
+            
             self._cached_employees = {
                 update.employee.lower().strip()
                 for update in reporting_tool.updates
@@ -592,6 +944,24 @@ class SmartQueryRouter:
                 for update in reporting_tool.updates
                 if update.role and update.role.strip()
             }
+            
+            # Extract projects and technologies from update content  
+            self._cached_projects = set()
+            self._cached_technologies = set()
+            
+            for update in reporting_tool.updates:
+                if update.update:
+                    # Extract common project terms using existing patterns
+                    project_indicators = re.findall(
+                        r'\b([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*)\s+(?:project|feature|system|platform|dashboard|portal|service|module)\b',
+                        update.update,
+                        re.IGNORECASE
+                    )
+                    self._cached_projects.update(p.strip() for p in project_indicators if p.strip())
+                    
+                    # Use entity config to find technologies mentioned in updates
+                    update_techs = self.entity_config.find_matching_technologies(update.update)
+                    self._cached_technologies.update(update_techs)
 
     def _get_dynamic_employee_pattern(self) -> str:
         """Generate regex pattern for employees from current data"""
