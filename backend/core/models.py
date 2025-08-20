@@ -1,4 +1,6 @@
 # models.py
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
@@ -34,17 +36,32 @@ class Update:
 class AggregatedData:
     """Represents aggregated team updates"""
 
-    role_summary: Dict[str, List[Dict[str, str]]]
-    all_updates: List[str]
+    role_updates: Dict[str, List[Update]]
+    projects: List[str]
+    achievements: List[str]  
+    blockers: List[str]
     total_updates: int
 
     def get_context_string(self) -> str:
         """Convert aggregated data to string format for LLM context"""
         context = f"Team Updates Summary:\nTotal Updates: {self.total_updates}\n\nUpdates by Role:\n"
 
-        for role, role_updates in self.role_summary.items():
+        for role, updates in self.role_updates.items():
             context += f"\n{role}:\n"
-            for update_info in role_updates:
-                context += f"  - {update_info['employee']}: {update_info['update']}\n"
+            for update in updates:
+                context += f"  - {update.employee}: {update.update}\n"
+
+        if self.projects:
+            context += f"\nKey Projects: {', '.join(self.projects)}\n"
+        
+        if self.achievements:
+            context += f"\nAchievements:\n"
+            for achievement in self.achievements[:5]:  # Limit for brevity
+                context += f"  - {achievement}\n"
+        
+        if self.blockers:
+            context += f"\nBlockers:\n"
+            for blocker in self.blockers[:5]:  # Limit for brevity
+                context += f"  - {blocker}\n"
 
         return context

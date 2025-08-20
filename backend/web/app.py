@@ -8,13 +8,11 @@ from typing import Optional
 
 import markdown
 import uvicorn
-from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, sessionmaker
+# SQLAlchemy now handled by scalable repository in data package
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -27,6 +25,26 @@ app = FastAPI()
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+
+# Add database health check endpoint
+@app.get("/health/database")  
+async def database_health_check():
+    try:
+        from data import DatabaseInitializer
+        
+        db_info = DatabaseInitializer.get_database_info()
+        return {
+            "status": "healthy" if db_info["connection_status"] == "Connected" else "unhealthy",
+            "database_info": db_info,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy", 
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -44,33 +62,7 @@ def markdown_filter(text):
 
 templates.env.filters["markdown"] = markdown_filter
 
-# --- SQLAlchemy setup ---
-SQLALCHEMY_DATABASE_URL = "sqlite:///./updates.db"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-
-class UpdateDB(Base):
-    __tablename__ = "updates"
-    id = Column(Integer, primary_key=True, index=True)
-    employee = Column(String, index=True)
-    role = Column(String)
-    date = Column(String)
-    update = Column(String)
-
-
-Base.metadata.create_all(bind=engine)
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Note: Database setup now handled by scalable repository in data package
 
 
 # --- Lazy initialization for LLM, reporting tool, vector service, and query router ---
@@ -84,7 +76,7 @@ def get_llm():
     global _llm
     if _llm is None:
         logger.info("Initializing LLM...")
-        from ..providers.llm_providers import create_llm
+        from providers.llm_providers import create_llm
 
         _llm = create_llm()
         logger.info("LLM initialized successfully")
@@ -95,9 +87,12 @@ def get_reporting_tool():
     global _tool
     if _tool is None:
         logger.info("Initializing reporting tool...")
-        from ..services.reporting_tool import PMReportingTool
+        from services.scalable_reporting_tool import ScalableReportingTool
+        from data import SQLAlchemyUpdateRepository
 
-        _tool = PMReportingTool(llm=get_llm())
+        # Create SQLAlchemy repository and scalable reporting tool
+        repository = SQLAlchemyUpdateRepository()
+        _tool = ScalableReportingTool(llm=get_llm(), repository=repository)
         logger.info("Reporting tool initialized successfully")
     return _tool
 
@@ -106,7 +101,7 @@ def get_vector_service():
     global _vector_service
     if _vector_service is None:
         logger.info("Initializing vector service...")
-        from ..services.vector_service import VectorService
+        from services.vector_service import VectorService
 
         _vector_service = VectorService()
         logger.info("Vector service initialized successfully")
@@ -117,7 +112,7 @@ def get_query_router():
     global _query_router
     if _query_router is None:
         logger.info("Initializing query router...")
-        from ..query_handlers.router import SmartQueryRouter
+        from query_handlers.router import SmartQueryRouter
 
         _query_router = SmartQueryRouter(llm=get_llm())
         logger.info("Query router initialized successfully")
@@ -127,7 +122,16 @@ def get_query_router():
 @app.on_event("startup")
 async def startup_event():
     logger.info("FastAPI app starting up...")
-    logger.info("Database tables created")
+    
+    # Initialize database with SQLAlchemy
+    try:
+        from data import init_database
+        
+        init_database()
+        logger.info("Database initialized with SQLAlchemy and indexes")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+        raise
 
     # Initialize entity configuration
     try:
@@ -154,8 +158,11 @@ def landing(request: Request):
 
 
 @app.get("/updates", response_class=HTMLResponse)
-def updates_page(request: Request, db: Session = Depends(get_db)):
-    updates = db.query(UpdateDB).order_by(UpdateDB.id.desc()).all()
+def updates_page(request: Request):
+    # Use scalable repository for consistent data access
+    tool = get_reporting_tool()
+    updates = tool.repository.get_recent(limit=100)  # Get recent 100 updates
+    
     return templates.TemplateResponse(
         "updates.html", {"request": request, "updates": updates}
     )
@@ -189,49 +196,27 @@ async def generate_report(
     start_date: str = Form(...),
     end_date: str = Form(...),
     custom_prompt: Optional[str] = Form(None),
-    db: Session = Depends(get_db),
 ):
     try:
         # Set a timeout for the entire operation
         async def generate_report_with_timeout():
-            # Lazy import to avoid startup delays
-            from ..core.models import Update
-
             logger.info(f"Starting report generation for {start_date} to {end_date}")
             tool = get_reporting_tool()
 
-            # Filter updates by date range
-            updates = (
-                db.query(UpdateDB)
-                .filter(UpdateDB.date >= start_date, UpdateDB.date <= end_date)
-                .all()
-            )
-            logger.info(f"Found {len(updates)} updates for report")
-
-            tool.clear_updates()
-            for u in updates:
-                tool.add_update(
-                    Update(
-                        employee=str(u.employee),
-                        role=str(u.role),
-                        date=str(u.date),
-                        update=str(u.update),
-                    )
-                )
-
-            logger.info("Generating report with LLM...")
-
-            # Parse dates
+            # Parse dates for date range
             start_date_obj = datetime.strptime(start_date, "%Y-%m-%d")
             end_date_obj = datetime.strptime(end_date, "%Y-%m-%d")
             date_range = (start_date_obj, end_date_obj)
 
-            # Generate report with simplified approach
-            report = tool.generate_report(
+            logger.info("Generating report with scalable method...")
+
+            # Use scalable method that queries repository directly
+            report = tool.generate_smart_report(
                 date_range=date_range,
                 custom_prompt=custom_prompt.strip()
                 if custom_prompt and custom_prompt.strip()
                 else None,
+                max_updates=100  # Reasonable limit for performance
             )
             logger.info("Report generation completed")
 
@@ -285,24 +270,24 @@ def submit_update(
     role: str = Form(...),
     update: str = Form(...),
     date: Optional[str] = Form(None),
-    db: Session = Depends(get_db),
 ):
     if not date:
-        from ..core.config import Config
-
+        from core.config import Config
         date = datetime.now().strftime(Config.DATE_FORMAT)
 
-    db_update = UpdateDB(employee=employee, role=role, date=date, update=update)
-    db.add(db_update)
-    db.commit()
+    # Use scalable repository for consistent architecture
+    from core.models import Update
+    
+    update_obj = Update(employee=employee, role=role, date=date, update=update)
+    
+    # Add to main repository
+    tool = get_reporting_tool()
+    tool.add_update(update_obj)
 
     # Also add to vector database
     try:
         vector_service = get_vector_service()
-        from ..core.models import Update
-
-        vector_update = Update(employee=employee, role=role, date=date, update=update)
-        vector_service.add_update(vector_update)
+        vector_service.add_update(update_obj)
     except Exception as e:
         logger.warning(f"Failed to add update to vector DB: {str(e)}")
 
@@ -310,9 +295,7 @@ def submit_update(
 
 
 @app.post("/bulk_upload", response_class=HTMLResponse)
-async def bulk_upload(
-    request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)
-):
+async def bulk_upload(request: Request, file: UploadFile = File(...)):
     try:
         # Read the uploaded file
         contents = await file.read()
@@ -341,8 +324,11 @@ async def bulk_upload(
 
         # Validate each update has required fields
         required_fields = ["employee", "role", "date", "update"]
-        added_count = 0
-
+        
+        # Convert to Update objects for validation
+        from core.models import Update
+        updates_to_add = []
+        
         for i, update_data in enumerate(updates_data):
             if not isinstance(update_data, dict):
                 return templates.TemplateResponse(
@@ -366,17 +352,19 @@ async def bulk_upload(
                     },
                 )
 
-            # Add to database
-            db_update = UpdateDB(
+            # Create Update object
+            update = Update(
                 employee=str(update_data["employee"]),
                 role=str(update_data["role"]),
                 date=str(update_data["date"]),
-                update=str(update_data["update"]),
+                update=str(update_data["update"])
             )
-            db.add(db_update)
-            added_count += 1
+            updates_to_add.append(update)
 
-        db.commit()
+        # Use scalable repository for bulk insert
+        tool = get_reporting_tool()
+        tool.add_updates(updates_to_add)
+        added_count = len(updates_to_add)
 
         return templates.TemplateResponse(
             "manage_updates.html",
@@ -395,46 +383,22 @@ async def bulk_upload(
 
 
 @app.post("/ask", response_class=HTMLResponse)
-def ask(request: Request, question: str = Form(...), db: Session = Depends(get_db)):
-    from ..core.models import Update
-
+def ask(request: Request, question: str = Form(...)):
     tool = get_reporting_tool()
-    updates = db.query(UpdateDB).all()
-    tool.clear_updates()
-    for u in updates:
-        tool.add_update(
-            Update(
-                employee=str(u.employee),
-                role=str(u.role),
-                date=str(u.date),
-                update=str(u.update),
-            )
-        )
-
-    answer = tool.answer_factual_question_from_all_data(question)
+    
+    # Use scalable method that works directly with repository - no manual loading needed
+    answer = tool.answer_contextual_question(question, max_updates=100)
     return templates.TemplateResponse(
         "answer.html", {"request": request, "question": question, "answer": answer}
     )
 
 
 @app.get("/stats", response_class=HTMLResponse)
-def stats(request: Request, db: Session = Depends(get_db)):
-    from ..core.models import Update
-
+def stats(request: Request):
     tool = get_reporting_tool()
-    updates = db.query(UpdateDB).all()
-    tool.clear_updates()
-    for u in updates:
-        tool.add_update(
-            Update(
-                employee=str(u.employee),
-                role=str(u.role),
-                date=str(u.date),
-                update=str(u.update),
-            )
-        )
-
-    stats = tool.get_summary_stats()
+    
+    # Use repository stats directly instead of manually loading all updates
+    stats = tool.repository.get_stats()
 
     # Add vector database stats
     try:
@@ -451,68 +415,61 @@ def stats(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/load_mock_data", response_class=HTMLResponse)
-def load_mock_data(request: Request, db: Session = Depends(get_db)):
+def load_mock_data(request: Request):
+    # Use scalable repository and DataLoader
+    from services.data_loader import DataLoader
+    
     tool = get_reporting_tool()
-    db.query(UpdateDB).delete()
-    db.commit()
-    tool.clear_updates()
-    tool.load_mock_data()
-    for u in tool.updates:
-        db_update = UpdateDB(
-            employee=u.employee, role=u.role, date=u.date, update=u.update
-        )
-        db.add(db_update)
-    db.commit()
+    tool.clear_updates()  # Clear existing data
+    
+    # Load mock data using DataLoader
+    mock_updates = DataLoader.get_mock_updates()
+    tool.add_updates(mock_updates)
+    
     return RedirectResponse("/updates", status_code=303)
 
 
 @app.get("/import_mock_data", response_class=HTMLResponse)
-def import_mock_data(request: Request, db: Session = Depends(get_db)):
-    from ..services.data_loader import DataLoader
+def import_mock_data(request: Request):
+    from services.data_loader import DataLoader
 
-    # Import all mock updates from DataLoader
+    # Import all mock updates using scalable repository
+    tool = get_reporting_tool()
     updates = DataLoader.get_mock_updates()
-    for u in updates:
-        db_update = UpdateDB(
-            employee=u.employee, role=u.role, date=u.date, update=u.update
-        )
-        db.add(db_update)
-    db.commit()
+    tool.add_updates(updates)
+    
     return RedirectResponse("/updates", status_code=303)
 
 
 @app.get("/import_additional_mock_data", response_class=HTMLResponse)
-def import_additional_mock_data(request: Request, db: Session = Depends(get_db)):
-    from ..services.data_loader import DataLoader
+def import_additional_mock_data(request: Request):
+    from services.data_loader import DataLoader
 
+    # Import additional mock updates using scalable repository
+    tool = get_reporting_tool()
     updates = DataLoader.get_additional_mock_updates()
-    for u in updates:
-        db_update = UpdateDB(
-            employee=u.employee, role=u.role, date=u.date, update=u.update
-        )
-        db.add(db_update)
-    db.commit()
+    tool.add_updates(updates)
+    
     return RedirectResponse("/updates", status_code=303)
 
 
 @app.get("/import_mock_updates_with_blockers", response_class=HTMLResponse)
-def import_mock_updates_with_blockers(request: Request, db: Session = Depends(get_db)):
-    from ..services.data_loader import DataLoader
+def import_mock_updates_with_blockers(request: Request):
+    from services.data_loader import DataLoader
 
+    # Import mock updates with blockers using scalable repository
+    tool = get_reporting_tool()
     updates = DataLoader.get_mock_updates_with_blockers()
-    for u in updates:
-        db_update = UpdateDB(
-            employee=u.employee, role=u.role, date=u.date, update=u.update
-        )
-        db.add(db_update)
-    db.commit()
+    tool.add_updates(updates)
+    
     return RedirectResponse("/updates", status_code=303)
 
 
 @app.get("/delete_all_updates", response_class=HTMLResponse)
-def delete_all_updates(request: Request, db: Session = Depends(get_db)):
-    db.query(UpdateDB).delete()
-    db.commit()
+def delete_all_updates(request: Request):
+    # Clear all updates using scalable repository
+    tool = get_reporting_tool()
+    tool.clear_updates()
 
     # Also clear vector database
     vector_service = get_vector_service()
@@ -531,27 +488,10 @@ async def intelligent_ask_page_results(
     request: Request,
     question: str = Form(...),
     method_override: Optional[str] = Form(None),
-    db: Session = Depends(get_db),
 ):
     try:
-        # Load updates into reporting tool
-        from ..core.models import Update
-
+        # Get services (no need to manually load updates)
         tool = get_reporting_tool()
-        updates = db.query(UpdateDB).all()
-        tool.clear_updates()
-
-        for u in updates:
-            tool.add_update(
-                Update(
-                    employee=str(u.employee),
-                    role=str(u.role),
-                    date=str(u.date),
-                    update=str(u.update),
-                )
-            )
-
-        # Get services
         vector_service = get_vector_service()
         router = get_query_router()
 
@@ -560,7 +500,7 @@ async def intelligent_ask_page_results(
             query=question,
             reporting_tool=tool,
             vector_service=vector_service,
-            db_session=db,
+            db_session=None,  # Not needed with scalable repository
             override_method=method_override if method_override else None,
         )
 
@@ -590,26 +530,14 @@ async def intelligent_ask_page_results(
 
 
 @app.post("/sync_vector_db")
-async def sync_vector_database(db: Session = Depends(get_db)):
-    """Sync all updates from SQL database to vector database"""
+async def sync_vector_database():
+    """Sync all updates from scalable repository to vector database"""
     try:
         vector_service = get_vector_service()
+        tool = get_reporting_tool()
 
-        # Get all updates from SQL database
-        sql_updates = db.query(UpdateDB).all()
-
-        # Convert to Update objects
-        from ..core.models import Update
-
-        updates = [
-            Update(
-                employee=str(u.employee),
-                role=str(u.role),
-                date=str(u.date),
-                update=str(u.update),
-            )
-            for u in sql_updates
-        ]
+        # Get all updates from scalable repository
+        updates = tool.repository.get_all(limit=1000)  # Reasonable limit
 
         # Clear and repopulate vector database
         vector_service.clear_collection()
@@ -617,7 +545,7 @@ async def sync_vector_database(db: Session = Depends(get_db)):
 
         return {
             "message": f"Synced {synced_count} updates to vector database",
-            "total_sql_updates": len(sql_updates),
+            "total_repository_updates": len(updates),
             "synced_updates": synced_count,
             "status": "success",
         }
@@ -631,28 +559,11 @@ async def sync_vector_database(db: Session = Depends(get_db)):
 async def intelligent_ask(
     question: str = Form(...),
     method_override: Optional[str] = Form(None),
-    db: Session = Depends(get_db),
 ):
     """Intelligent query routing that automatically selects the best approach"""
     try:
-        # Load updates into reporting tool
-        from ..core.models import Update
-
+        # Get services (no need to manually load updates)
         tool = get_reporting_tool()
-        updates = db.query(UpdateDB).all()
-        tool.clear_updates()
-
-        for u in updates:
-            tool.add_update(
-                Update(
-                    employee=str(u.employee),
-                    role=str(u.role),
-                    date=str(u.date),
-                    update=str(u.update),
-                )
-            )
-
-        # Get services
         vector_service = get_vector_service()
         router = get_query_router()
 
@@ -661,7 +572,7 @@ async def intelligent_ask(
             query=question,
             reporting_tool=tool,
             vector_service=vector_service,
-            db_session=db,
+            db_session=None,  # Not needed with scalable repository
             override_method=method_override,
         )
 

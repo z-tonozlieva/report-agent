@@ -11,6 +11,7 @@ class AnalyticalHandler:
         self, query: str, reporting_tool, vector_service, params: Dict[str, Any]
     ) -> Tuple[str, Dict[str, Any]]:
         """Handle analytical queries that require deeper reasoning"""
+        # params reserved for future filtering/configuration options
 
         # For analytical queries, combine both approaches
         # First get semantic context
@@ -31,12 +32,17 @@ class AnalyticalHandler:
             Please provide a comprehensive analytical response.
             """
 
-            answer = reporting_tool.answer_factual_question_from_all_data(
-                enhanced_query
+            # Use scalable contextual query with enhanced context
+            answer = reporting_tool.answer_contextual_question(
+                enhanced_query,
+                max_updates=75  # Leave room for semantic context
             )
-        # TODO: We would never want to do that
         else:
-            answer = reporting_tool.answer_factual_question_from_all_data(query)
+            # Use scalable contextual query
+            answer = reporting_tool.answer_contextual_question(
+                query,
+                max_updates=100
+            )
 
         additional_info = {
             "method": "analytical_hybrid",

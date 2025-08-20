@@ -30,10 +30,10 @@ class SemanticHandler:
         )
 
         if not search_results:
-            # Fallback to traditional Q&A
-            answer = reporting_tool.answer_factual_question_from_all_data(query)
+            # Fallback to contextual Q&A
+            answer = reporting_tool.answer_contextual_question(query, max_updates=50)
             additional_info = {
-                "method": "semantic_fallback_to_traditional",
+                "method": "semantic_fallback_to_contextual",
                 "search_results": 0,
             }
             return f"(No semantic matches found) {answer}", additional_info

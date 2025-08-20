@@ -4,7 +4,7 @@
 import logging
 from typing import Optional
 
-from ..core import LLMInterface
+from core import LLMInterface
 from .analytical_handler import AnalyticalHandler
 from .classifier import QueryClassifier
 from .comparison_handler import ComparisonHandler
@@ -107,12 +107,12 @@ class SmartQueryRouter:
 
         except Exception as e:
             logger.error(f"Error routing query: {str(e)}")
-            # Fallback to simple factual query
+            # Fallback to simple contextual query
             try:
-                answer = reporting_tool.answer_factual_question_from_all_data(query)
+                answer = reporting_tool.answer_contextual_question(query, max_updates=50)
                 return RouterResponse(
                     answer=f"(Fallback) {answer}",
-                    method_used="factual_fallback",
+                    method_used="contextual_fallback",
                     confidence=0.5,
                     additional_info={"error": str(e)},
                 )

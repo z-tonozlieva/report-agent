@@ -56,15 +56,23 @@ class FactualHandler:
                 "filters_applied": True,
             }
         else:
-            # Use all data (original behavior)
-            answer = reporting_tool.answer_factual_question_from_all_data(query)
+            # Use scalable contextual query instead of loading all data
+            employee_filter = params.get("employee_filter")
+            role_filter = params.get("role_filter")
+            
+            # Use scalable contextual query
+            answer = reporting_tool.answer_contextual_question(
+                query,
+                employee_filter=employee_filter,
+                role_filter=role_filter,
+                max_updates=100  # Reasonable limit
+            )
+            method_used = "factual_contextual"
 
             additional_info = {
-                "method": "factual_all_data",
-                "warning": "Uses ALL updates in database",
-                "filters_applied": bool(
-                    params.get("employee_filter") or params.get("role_filter")
-                ),
+                "method": method_used,
+                "max_updates_used": 100,
+                "filters_applied": bool(employee_filter or role_filter),
             }
 
         return answer, additional_info

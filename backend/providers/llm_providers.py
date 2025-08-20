@@ -11,7 +11,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.utils.utils import convert_to_secret_str
 from langchain_groq import ChatGroq
 
-from ..core import LLMInterface
+from core import LLMInterface
 
 
 class LangChainLLMWrapper(LLMInterface):
@@ -55,9 +55,9 @@ class GroqLLM(LangChainLLMWrapper):
     """
 
     def __init__(self, model_name: str = "llama3-8b-8192"):
-        from .config import Config
-
-        api_key = Config.get_groq_api_key()
+        import os
+        
+        api_key = os.getenv("GROQ_API_KEY")
 
         if not api_key:
             print("Warning: GROQ_API_KEY not set. Set it as environment variable.")

@@ -1,7 +1,7 @@
 # data_loader.py
 from typing import List
 
-from ..core import Update
+from core import Update
 
 
 class DataLoader:

@@ -30,14 +30,19 @@ class ReportHandler:
         Structure the response as requested, focusing on the specific aspects mentioned in the query.
         """
 
-        report = reporting_tool.generate_report(
-            date_range=date_range_tuple, custom_prompt=custom_prompt
+        # Use scalable report generation
+        report = reporting_tool.generate_smart_report(
+            date_range=date_range_tuple, 
+            custom_prompt=custom_prompt,
+            max_updates=150  # Reasonable limit for reports
         )
+        method_used = "smart_report_generation"
 
         additional_info = {
             "date_range": date_range,
-            "method": "report_generation",
+            "method": method_used,
             "custom_prompt_used": True,
+            "max_updates_limit": 150,
         }
 
         return report, additional_info
