@@ -1,0 +1,28 @@
+# requirements-test.txt
+# Testing dependencies for ReportAgent
+
+# Core testing framework
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.10.0
+pytest-cov>=4.0.0
+pytest-timeout>=2.1.0
+
+# Web testing
+httpx>=0.24.0
+pytest-httpx>=0.21.0
+
+# Database testing helpers
+pytest-postgresql>=4.1.0  # Optional: if we ever switch to PostgreSQL
+factory-boy>=3.2.0        # Optional: for test data factories
+
+# Mocking and fixtures
+responses>=0.23.0
+freezegun>=1.2.0          # For freezing time in tests
+
+# Performance testing (optional)
+pytest-benchmark>=4.0.0   # For benchmarking slow tests
+
+# Test reporting
+pytest-html>=3.1.0        # HTML test reports
+pytest-json-report>=1.5.0 # JSON test reports
