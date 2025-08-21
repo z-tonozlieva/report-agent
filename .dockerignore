@@ -83,6 +83,11 @@ updates.db
 # Don't copy local vector DB (will be created in container)
 chroma_db/
 
+# Large files that shouldn't be in Docker image
+*.tar
+*.tar.gz
+*.zip
+
 # Development dependencies
 requirements-dev.txt
 
