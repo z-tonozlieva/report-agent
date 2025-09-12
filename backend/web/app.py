@@ -8,17 +8,75 @@ from typing import Optional
 
 import markdown
 import uvicorn
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, File, Form, Request, UploadFile, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 # SQLAlchemy now handled by scalable repository in data package
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+# Rate limiting setup
+limiter = Limiter(key_func=get_remote_address)
+
+# Simple API key auth for production (optional)
+security = HTTPBearer(auto_error=False)
+
+def get_api_key() -> Optional[str]:
+    """Get API key from environment if set"""
+    return os.environ.get("API_KEY")
+
+async def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Verify API key if set in environment"""
+    api_key = get_api_key()
+    
+    # If no API key is configured, allow access
+    if not api_key:
+        return True
+        
+    # If API key is configured but no credentials provided
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key required"
+        )
+    
+    # Verify the API key
+    if credentials.credentials != api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key"
+        )
+    return True
+
+app = FastAPI(
+    # Add file upload size limit (5MB)
+    docs_url="/docs" if os.environ.get("ENVIRONMENT") != "production" else None,
+    redoc_url="/redoc" if os.environ.get("ENVIRONMENT") != "production" else None,
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add middleware to check file upload sizes
+@app.middleware("http")
+async def limit_upload_size(request: Request, call_next):
+    # Check if this is a file upload request
+    if request.method == "POST" and "multipart/form-data" in request.headers.get("content-type", ""):
+        content_length = request.headers.get("content-length")
+        if content_length:
+            content_length = int(content_length)
+            # 5MB limit for file uploads
+            if content_length > 5 * 1024 * 1024:
+                raise HTTPException(status_code=413, detail="File too large. Maximum size is 5MB.")
+    
+    response = await call_next(request)
+    return response
 
 
 # Add health check endpoint for Render
@@ -191,11 +249,13 @@ async def get_default_prompt():
 
 
 @app.post("/generate_report", response_class=HTMLResponse)
+@limiter.limit("5/minute")  # Limit report generation to prevent abuse
 async def generate_report(
     request: Request,
     start_date: str = Form(...),
     end_date: str = Form(...),
     custom_prompt: Optional[str] = Form(None),
+    _: bool = Depends(verify_api_key)  # Optional API key auth
 ):
     try:
         # Set a timeout for the entire operation
@@ -295,6 +355,7 @@ def submit_update(
 
 
 @app.post("/bulk_upload", response_class=HTMLResponse)
+@limiter.limit("10/hour")  # Limit bulk uploads
 async def bulk_upload(request: Request, file: UploadFile = File(...)):
     try:
         # Read the uploaded file
@@ -383,6 +444,7 @@ async def bulk_upload(request: Request, file: UploadFile = File(...)):
 
 
 @app.post("/ask", response_class=HTMLResponse)
+@limiter.limit("20/minute")  # Limit Q&A requests
 def ask(request: Request, question: str = Form(...)):
     tool = get_reporting_tool()
     
@@ -484,6 +546,7 @@ def intelligent_ask_page(request: Request):
 
 
 @app.post("/intelligent_ask_page", response_class=HTMLResponse)
+@limiter.limit("15/minute")  # Limit intelligent queries
 async def intelligent_ask_page_results(
     request: Request,
     question: str = Form(...),
@@ -556,6 +619,7 @@ async def sync_vector_database():
 
 
 @app.post("/intelligent_ask")
+@limiter.limit("15/minute")  # Limit intelligent queries  
 async def intelligent_ask(
     question: str = Form(...),
     method_override: Optional[str] = Form(None),
