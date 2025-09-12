@@ -33,21 +33,6 @@ class Config:
         "Are we on track for our deadlines?",
     ]
 
-    # Employee roles for validation
-    VALID_ROLES = [
-        "Frontend Developer",
-        "Backend Developer",
-        "Full Stack Developer",
-        "Product Manager",
-        "DevOps Engineer",
-        "QA Engineer",
-        "UX Designer",
-        "UI Designer",
-        "Marketing Manager",
-        "Senior Developer",
-        "Tech Lead",
-        "Engineering Manager",
-    ]
 
     # Date format for updates
     DATE_FORMAT = "%Y-%m-%d"
@@ -86,5 +71,4 @@ class Config:
 
 
 # Export constants for backwards compatibility
-SUPPORTED_ROLES = Config.VALID_ROLES
 SAMPLE_STAKEHOLDER_QUESTIONS = Config.SAMPLE_QUESTIONS

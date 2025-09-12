@@ -1,0 +1,139 @@
+# Entity Configuration for PM Reporting Tool
+# This configuration defines teams, technologies, projects, and focus areas
+# for intelligent query parsing and routing
+
+teams:
+  - name: "Engineering"
+    aliases: ["engineering", "eng", "development", "dev"]
+    roles: ["Frontend Developer", "Backend Developer", "Full Stack Developer", "Senior Developer", "DevOps Engineer", "QA Engineer"]
+    description: "Software engineering and development team"
+
+  - name: "Product"
+    aliases: ["product", "product management", "pm"]
+    roles: ["Product Manager", "Product Owner"]
+    description: "Product management and strategy team"
+
+  - name: "Design"
+    aliases: ["design", "ux", "ui", "user experience", "user interface"]
+    roles: ["UX Designer", "UI Designer", "Product Designer"]
+    description: "User experience and interface design team"
+
+  - name: "Marketing"
+    aliases: ["marketing", "growth", "content"]
+    roles: ["Marketing Manager", "Growth Manager", "Content Manager"]
+    description: "Marketing and growth team"
+
+  - name: "AI/ML"
+    aliases: ["ai", "ml", "machine learning", "artificial intelligence", "data science"]
+    roles: ["Data Scientist", "ML Engineer", "AI Engineer"]
+    description: "AI and Machine Learning team"
+
+technologies:
+  - name: "React"
+    aliases: ["react", "reactjs", "react.js"]
+    category: "frontend"
+    
+  - name: "JavaScript"
+    aliases: ["javascript", "js", "node", "nodejs"]
+    category: "frontend"
+    
+  - name: "Python"
+    aliases: ["python", "django", "flask", "fastapi"]
+    category: "backend"
+    
+  - name: "API"
+    aliases: ["api", "rest", "restful", "graphql", "endpoint"]
+    category: "integration"
+    
+  - name: "Database"
+    aliases: ["database", "db", "sql", "sqlite", "postgresql", "mysql"]
+    category: "backend"
+    
+  - name: "Docker"
+    aliases: ["docker", "container", "containerization"]
+    category: "devops"
+    
+  - name: "Authentication"
+    aliases: ["auth", "authentication", "login", "signup", "oauth"]
+    category: "security"
+
+  - name: "Testing"
+    aliases: ["test", "testing", "qa", "quality assurance", "automated tests"]
+    category: "quality"
+
+projects:
+  - name: "Dashboard"
+    aliases: ["dashboard", "admin panel", "control panel"]
+    
+  - name: "Mobile App"
+    aliases: ["mobile", "app", "ios", "android"]
+    
+  - name: "API Gateway"
+    aliases: ["gateway", "api gateway", "microservices"]
+    
+  - name: "Authentication System"
+    aliases: ["auth system", "login system", "user management"]
+    
+  - name: "Payment System"
+    aliases: ["payment", "billing", "checkout", "payment gateway"]
+    
+  - name: "Monitoring"
+    aliases: ["monitoring", "alerts", "observability", "metrics"]
+
+focus_areas:
+  - name: "Bug"
+    aliases: ["bug", "issue", "error", "problem", "fix", "broken"]
+    category: "issue"
+    priority: "high"
+    
+  - name: "Blocker"
+    aliases: ["blocked", "blocker", "blocking", "stuck", "waiting"]
+    category: "issue"
+    priority: "high"
+    
+  - name: "Achievement"
+    aliases: ["completed", "finished", "delivered", "launched", "released", "success", "done"]
+    category: "achievement"
+    priority: "medium"
+    
+  - name: "In Progress"
+    aliases: ["working on", "in progress", "developing", "building", "implementing"]
+    category: "status"
+    priority: "medium"
+    
+  - name: "Planning"
+    aliases: ["planning", "design", "architecture", "roadmap", "strategy"]
+    category: "planning"
+    priority: "low"
+
+temporal_patterns:
+  this_week: ["this week", "current week"]
+  next_week: ["next week", "upcoming week"]
+  this_month: ["this month", "current month"]
+  last_week: ["last week", "previous week"]
+  today: ["today", "currently"]
+  yesterday: ["yesterday"]
+
+organization:
+  departments:
+    - "Engineering"
+    - "Product"
+    - "Design" 
+    - "Marketing"
+    - "AI/ML"
+    - "Operations"
+  
+  common_roles:
+    - "Frontend Developer"
+    - "Backend Developer"
+    - "Full Stack Developer"
+    - "Senior Developer"
+    - "Tech Lead"
+    - "Engineering Manager"
+    - "Product Manager"
+    - "UX Designer"
+    - "UI Designer"
+    - "Marketing Manager"
+    - "DevOps Engineer"
+    - "QA Engineer"
+    - "Data Scientist"

@@ -216,19 +216,55 @@ def landing(request: Request):
 
 
 @app.get("/updates", response_class=HTMLResponse)
-def updates_page(request: Request):
-    # Use scalable repository for consistent data access
+def updates_page(request: Request, employee: str = None, department: str = None):
     tool = get_reporting_tool()
-    updates = tool.repository.get_recent(limit=100)  # Get recent 100 updates
+    
+    # Apply filters if provided
+    if employee or department:
+        # Get filtered updates
+        if employee and department:
+            # Filter by both employee and department
+            all_updates = tool.repository.get_recent(limit=200)  # Get more to filter
+            updates = [u for u in all_updates if 
+                      (u.employee.lower() == employee.lower() if employee else True) and
+                      (u.department and u.department.lower() == department.lower() if department else True)][:50]
+        elif employee:
+            updates = tool.repository.get_by_employee(employee)[:50]
+        elif department:
+            # Filter by department
+            all_updates = tool.repository.get_recent(limit=200)
+            updates = [u for u in all_updates if 
+                      u.department and u.department.lower() == department.lower()][:50]
+    else:
+        # No filters - show recent updates
+        updates = tool.repository.get_recent(limit=100)
+    
+    # Get filter options
+    available_employees = tool.repository.get_all_employee_names()
+    available_departments = tool.repository.get_unique_departments()
     
     return templates.TemplateResponse(
-        "updates.html", {"request": request, "updates": updates}
+        "updates.html", {
+            "request": request, 
+            "updates": updates,
+            "available_employees": available_employees,
+            "available_departments": available_departments,
+            "selected_employee": employee,
+            "selected_department": department
+        }
     )
 
 
 @app.get("/manage_updates", response_class=HTMLResponse)
 def manage_updates_page(request: Request):
-    return templates.TemplateResponse("manage_updates.html", {"request": request})
+    # Get available roles from database
+    tool = get_reporting_tool()
+    available_roles = tool.repository.get_unique_roles()
+    
+    return templates.TemplateResponse(
+        "manage_updates.html", 
+        {"request": request, "available_roles": available_roles}
+    )
 
 
 @app.get("/generate_report", response_class=HTMLResponse)
@@ -485,6 +521,17 @@ def stats(request: Request):
     return templates.TemplateResponse(
         "stats.html", {"request": request, "stats": stats}
     )
+
+
+@app.get("/api/employees")
+async def get_employees_api():
+    """API endpoint to get all employee names for autocomplete"""
+    try:
+        tool = get_reporting_tool()
+        employees = tool.repository.get_all_employee_names()
+        return {"employees": employees}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @app.get("/load_mock_data", response_class=HTMLResponse)

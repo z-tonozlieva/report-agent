@@ -353,6 +353,52 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
         except SQLAlchemyError as e:
             raise DatabaseError(f"Failed to get repository stats: {str(e)}") from e
     
+    def get_unique_roles(self) -> List[str]:
+        """Get all unique roles from employees, ordered by usage frequency"""
+        try:
+            # Get roles ordered by frequency (most used first)
+            role_counts = self.session.query(
+                EmployeeModel.role, func.count(EmployeeModel.id)
+            ).filter(
+                EmployeeModel.role.isnot(None)
+            ).group_by(EmployeeModel.role).order_by(
+                func.count(EmployeeModel.id).desc()
+            ).all()
+            
+            return [role for role, count in role_counts]
+            
+        except SQLAlchemyError as e:
+            raise DatabaseError(f"Failed to get unique roles: {str(e)}") from e
+    
+    def get_all_employee_names(self) -> List[str]:
+        """Get all employee names for autocomplete, ordered alphabetically"""
+        try:
+            names = self.session.query(EmployeeModel.name).order_by(
+                EmployeeModel.name
+            ).all()
+            
+            return [name[0] for name in names]
+            
+        except SQLAlchemyError as e:
+            raise DatabaseError(f"Failed to get employee names: {str(e)}") from e
+    
+    def get_unique_departments(self) -> List[str]:
+        """Get all unique departments, ordered by usage frequency"""
+        try:
+            # Get departments ordered by frequency (most used first)
+            dept_counts = self.session.query(
+                EmployeeModel.department, func.count(EmployeeModel.id)
+            ).filter(
+                EmployeeModel.department.isnot(None)
+            ).group_by(EmployeeModel.department).order_by(
+                func.count(EmployeeModel.id).desc()
+            ).all()
+            
+            return [dept for dept, count in dept_counts]
+            
+        except SQLAlchemyError as e:
+            raise DatabaseError(f"Failed to get unique departments: {str(e)}") from e
+    
     def _to_update_model(self, db_update: UpdateModel) -> Update:
         """Convert SQLAlchemy model to domain model"""
         return Update(
