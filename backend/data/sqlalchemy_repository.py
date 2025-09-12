@@ -6,12 +6,12 @@ from typing import List, Optional
 
 from sqlalchemy import and_, desc, func
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from core import Update
 from core.exceptions import DatabaseError
 from .base_repository import BaseUpdateRepository
-from .models import UpdateModel, db_manager
+from .models import UpdateModel, EmployeeModel, db_manager
 
 
 class SQLAlchemyUpdateRepository(BaseUpdateRepository):
@@ -33,12 +33,41 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
         if self._should_close_session and self.session:
             self.session.close()
     
+    def _get_or_create_employee(self, update: Update) -> EmployeeModel:
+        """Get existing employee or create new one"""
+        employee = self.session.query(EmployeeModel).filter(
+            EmployeeModel.name == update.employee
+        ).first()
+        
+        if not employee:
+            employee = EmployeeModel(
+                name=update.employee,
+                role=update.role,
+                department=update.department,
+                manager=update.manager
+            )
+            self.session.add(employee)
+            self.session.flush()  # Get the ID without committing
+        else:
+            # Update employee info if provided
+            if update.role and employee.role != update.role:
+                employee.role = update.role
+            if update.department and employee.department != update.department:
+                employee.department = update.department
+            if update.manager and employee.manager != update.manager:
+                employee.manager = update.manager
+                
+        return employee
+    
     def add(self, update: Update) -> None:
         """Add a single update to the database"""
         try:
+            # Get or create employee
+            employee = self._get_or_create_employee(update)
+            
+            # Create update linked to employee
             db_update = UpdateModel(
-                employee=update.employee,
-                role=update.role,
+                employee_id=employee.id,
                 date=update.date,
                 update=update.update
             )
@@ -49,20 +78,20 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
             raise DatabaseError(f"Failed to add update: {str(e)}") from e
     
     def add_many(self, updates: List[Update]) -> None:
-        """Add multiple updates efficiently using bulk operations"""
+        """Add multiple updates efficiently"""
         try:
-            db_updates = [
-                UpdateModel(
-                    employee=update.employee,
-                    role=update.role,
+            for update in updates:
+                # Get or create employee for each update
+                employee = self._get_or_create_employee(update)
+                
+                # Create update linked to employee
+                db_update = UpdateModel(
+                    employee_id=employee.id,
                     date=update.date,
                     update=update.update
                 )
-                for update in updates
-            ]
+                self.session.add(db_update)
             
-            # Use bulk insert for better performance
-            self.session.bulk_save_objects(db_updates)
             self.session.commit()
         except SQLAlchemyError as e:
             self.session.rollback()
@@ -80,8 +109,10 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
             start_str = start_date.strftime("%Y-%m-%d")
             end_str = end_date.strftime("%Y-%m-%d")
             
-            # This query uses idx_updates_date index for O(log n) performance
-            query = self.session.query(UpdateModel).filter(
+            # Query with eager loading of employee data
+            query = self.session.query(UpdateModel).options(
+                joinedload(UpdateModel.employee_obj)
+            ).filter(
                 and_(
                     UpdateModel.date >= start_str,
                     UpdateModel.date <= end_str
@@ -105,11 +136,14 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
         employee_name: str, 
         limit: Optional[int] = None
     ) -> List[Update]:
-        """Get updates for specific employee - OPTIMIZED with employee index"""
+        """Get updates for specific employee - OPTIMIZED with join"""
         try:
-            # Uses idx_updates_employee index
-            query = self.session.query(UpdateModel).filter(
-                UpdateModel.employee == employee_name
+            query = self.session.query(UpdateModel).join(
+                EmployeeModel
+            ).options(
+                joinedload(UpdateModel.employee_obj)
+            ).filter(
+                EmployeeModel.name == employee_name
             ).order_by(desc(UpdateModel.date))
             
             if limit:
@@ -126,11 +160,14 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
         role: str, 
         limit: Optional[int] = None
     ) -> List[Update]:
-        """Get updates for specific role - OPTIMIZED with role index"""
+        """Get updates for specific role - OPTIMIZED with join"""
         try:
-            # Uses idx_updates_role index
-            query = self.session.query(UpdateModel).filter(
-                UpdateModel.role == role
+            query = self.session.query(UpdateModel).join(
+                EmployeeModel
+            ).options(
+                joinedload(UpdateModel.employee_obj)
+            ).filter(
+                EmployeeModel.role == role
             ).order_by(desc(UpdateModel.date))
             
             if limit:
@@ -145,8 +182,9 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
     def get_recent(self, limit: int = 50, offset: int = 0) -> List[Update]:
         """Get most recent updates - OPTIMIZED with date index"""
         try:
-            # Uses idx_updates_date_desc index for fast DESC ordering
-            db_updates = self.session.query(UpdateModel).order_by(
+            db_updates = self.session.query(UpdateModel).options(
+                joinedload(UpdateModel.employee_obj)
+            ).order_by(
                 desc(UpdateModel.date), desc(UpdateModel.id)
             ).offset(offset).limit(limit).all()
             
@@ -162,15 +200,18 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
         end_date: datetime,
         limit: Optional[int] = None
     ) -> List[Update]:
-        """Get employee updates in date range - OPTIMIZED with composite index"""
+        """Get employee updates in date range - OPTIMIZED with join"""
         try:
             start_str = start_date.strftime("%Y-%m-%d")
             end_str = end_date.strftime("%Y-%m-%d")
             
-            # Uses idx_updates_employee_date composite index
-            query = self.session.query(UpdateModel).filter(
+            query = self.session.query(UpdateModel).join(
+                EmployeeModel
+            ).options(
+                joinedload(UpdateModel.employee_obj)
+            ).filter(
                 and_(
-                    UpdateModel.employee == employee_name,
+                    EmployeeModel.name == employee_name,
                     UpdateModel.date >= start_str,
                     UpdateModel.date <= end_str
                 )
@@ -194,17 +235,21 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
     ) -> List[Update]:
         """Search updates by content - Basic text search"""
         try:
-            query = self.session.query(UpdateModel)
+            query = self.session.query(UpdateModel).join(
+                EmployeeModel
+            ).options(
+                joinedload(UpdateModel.employee_obj)
+            )
             
             # Basic text search (case-insensitive)
             query = query.filter(UpdateModel.update.ilike(f"%{search_term}%"))
             
             # Apply filters
             if employee_filter:
-                query = query.filter(UpdateModel.employee == employee_filter)
+                query = query.filter(EmployeeModel.name == employee_filter)
             
             if role_filter:
-                query = query.filter(UpdateModel.role == role_filter)
+                query = query.filter(EmployeeModel.role == role_filter)
             
             query = query.order_by(desc(UpdateModel.date)).limit(limit)
             
@@ -219,11 +264,14 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
         try:
             query = self.session.query(func.count(UpdateModel.id))
             
+            if employee_filter or role_filter:
+                query = query.join(EmployeeModel)
+            
             if employee_filter:
-                query = query.filter(UpdateModel.employee == employee_filter)
+                query = query.filter(EmployeeModel.name == employee_filter)
             
             if role_filter:
-                query = query.filter(UpdateModel.role == role_filter)
+                query = query.filter(EmployeeModel.role == role_filter)
             
             return query.scalar()
             
@@ -231,9 +279,12 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
             raise DatabaseError(f"Failed to count updates: {str(e)}") from e
     
     def clear(self) -> None:
-        """Clear all updates - USE WITH CAUTION"""
+        """Clear all updates and employees - USE WITH CAUTION"""
         try:
+            # Delete updates first due to foreign key constraint
             self.session.query(UpdateModel).delete()
+            # Delete employees 
+            self.session.query(EmployeeModel).delete()
             self.session.commit()
         except SQLAlchemyError as e:
             self.session.rollback()
@@ -242,7 +293,9 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
     def get_all(self, limit: Optional[int] = None) -> List[Update]:
         """Get all updates - USE WITH CAUTION for large datasets"""
         try:
-            query = self.session.query(UpdateModel).order_by(desc(UpdateModel.date))
+            query = self.session.query(UpdateModel).options(
+                joinedload(UpdateModel.employee_obj)
+            ).order_by(desc(UpdateModel.date))
             
             if limit:
                 query = query.limit(limit)
@@ -256,17 +309,31 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
     def get_stats(self) -> dict:
         """Get repository statistics for monitoring"""
         try:
-            total_count = self.session.query(func.count(UpdateModel.id)).scalar()
+            total_updates = self.session.query(func.count(UpdateModel.id)).scalar()
+            total_employees = self.session.query(func.count(EmployeeModel.id)).scalar()
             
             # Count by role
             role_counts = self.session.query(
-                UpdateModel.role, func.count(UpdateModel.id)
-            ).group_by(UpdateModel.role).all()
+                EmployeeModel.role, func.count(UpdateModel.id)
+            ).join(
+                UpdateModel, EmployeeModel.id == UpdateModel.employee_id
+            ).group_by(EmployeeModel.role).all()
             
             # Count by employee  
             employee_counts = self.session.query(
-                UpdateModel.employee, func.count(UpdateModel.id)
-            ).group_by(UpdateModel.employee).all()
+                EmployeeModel.name, func.count(UpdateModel.id)
+            ).join(
+                UpdateModel, EmployeeModel.id == UpdateModel.employee_id
+            ).group_by(EmployeeModel.name).all()
+            
+            # Count by department
+            department_counts = self.session.query(
+                EmployeeModel.department, func.count(UpdateModel.id)
+            ).join(
+                UpdateModel, EmployeeModel.id == UpdateModel.employee_id
+            ).filter(
+                EmployeeModel.department.isnot(None)
+            ).group_by(EmployeeModel.department).all()
             
             # Recent activity
             latest_update = self.session.query(UpdateModel).order_by(
@@ -274,9 +341,11 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
             ).first()
             
             return {
-                "total_updates": total_count,
+                "total_updates": total_updates,
+                "total_employees": total_employees,
                 "role_distribution": dict(role_counts),
                 "employee_counts": dict(employee_counts),
+                "department_distribution": dict(department_counts),
                 "latest_update_date": latest_update.date if latest_update else None,
                 "latest_update_created": latest_update.created_at.isoformat() if latest_update else None
             }
@@ -287,8 +356,10 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
     def _to_update_model(self, db_update: UpdateModel) -> Update:
         """Convert SQLAlchemy model to domain model"""
         return Update(
-            employee=db_update.employee,
-            role=db_update.role,
+            employee=db_update.employee_obj.name,
+            role=db_update.employee_obj.role,
+            department=db_update.employee_obj.department,
+            manager=db_update.employee_obj.manager,
             date=db_update.date,
             update=db_update.update
         )

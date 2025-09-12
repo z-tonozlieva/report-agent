@@ -330,6 +330,8 @@ def submit_update(
     role: str = Form(...),
     update: str = Form(...),
     date: Optional[str] = Form(None),
+    department: Optional[str] = Form(None),
+    manager: Optional[str] = Form(None),
 ):
     if not date:
         from core.config import Config
@@ -338,7 +340,14 @@ def submit_update(
     # Use scalable repository for consistent architecture
     from core.models import Update
     
-    update_obj = Update(employee=employee, role=role, date=date, update=update)
+    update_obj = Update(
+        employee=employee, 
+        role=role, 
+        date=date, 
+        update=update,
+        department=department if department else None,
+        manager=manager if manager else None
+    )
     
     # Add to main repository
     tool = get_reporting_tool()
@@ -418,7 +427,9 @@ async def bulk_upload(request: Request, file: UploadFile = File(...)):
                 employee=str(update_data["employee"]),
                 role=str(update_data["role"]),
                 date=str(update_data["date"]),
-                update=str(update_data["update"])
+                update=str(update_data["update"]),
+                department=str(update_data["department"]) if update_data.get("department") else None,
+                manager=str(update_data["manager"]) if update_data.get("manager") else None
             )
             updates_to_add.append(update)
 
@@ -621,6 +632,7 @@ async def sync_vector_database():
 @app.post("/intelligent_ask")
 @limiter.limit("15/minute")  # Limit intelligent queries  
 async def intelligent_ask(
+    request: Request,
     question: str = Form(...),
     method_override: Optional[str] = Form(None),
 ):

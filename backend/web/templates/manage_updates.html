@@ -65,7 +65,7 @@
                         <h5><i class="fas fa-upload"></i> Bulk Upload from JSON File</h5>
                     </div>
                     <div class="card-body">
-                        <p>Upload a JSON file containing multiple updates. Each update must have the fields: <code>employee</code>, <code>role</code>, <code>date</code>, and <code>update</code>.</p>
+                        <p>Upload a JSON file containing multiple updates. Each update must have the fields: <code>employee</code>, <code>role</code>, <code>date</code>, and <code>update</code>. Optional fields: <code>department</code> and <code>manager</code>.</p>
                         
                         <form action="/bulk_upload" method="post" enctype="multipart/form-data">
                             <div class="mb-3">
@@ -85,12 +85,16 @@
     {
         "employee": "Sarah Chen",
         "role": "Frontend Developer",
+        "department": "Engineering",
+        "manager": "Chris Lee",
         "date": "2025-01-15",
         "update": "Completed the new user authentication flow..."
     },
     {
         "employee": "Mike Rodriguez",
         "role": "Backend Developer",
+        "department": "Engineering",
+        "manager": "Chris Lee",
         "date": "2025-01-15",
         "update": "Finished the API endpoints for user management..."
     }
@@ -134,6 +138,21 @@
                                             <option value="Tech Lead">Tech Lead</option>
                                             <option value="Engineering Manager">Engineering Manager</option>
                                         </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="department" class="form-label">Department <small class="text-muted">(optional)</small></label>
+                                        <input type="text" class="form-control" id="department" name="department" placeholder="e.g., Engineering, Marketing">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="manager" class="form-label">Manager <small class="text-muted">(optional)</small></label>
+                                        <input type="text" class="form-control" id="manager" name="manager" placeholder="Manager's name">
                                     </div>
                                 </div>
                             </div>

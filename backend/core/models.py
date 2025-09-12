@@ -13,6 +13,8 @@ class Update:
     role: str
     date: str
     update: str
+    department: str = None
+    manager: str = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -20,6 +22,8 @@ class Update:
             "role": self.role,
             "date": self.date,
             "update": self.update,
+            "department": self.department,
+            "manager": self.manager,
         }
 
     @classmethod
@@ -29,6 +33,8 @@ class Update:
             role=data["role"],
             date=data["date"],
             update=data["update"],
+            department=data.get("department"),
+            manager=data.get("manager"),
         )
 
 

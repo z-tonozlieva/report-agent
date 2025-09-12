@@ -49,6 +49,17 @@ class ScalableReportingTool:
     def get_updates_by_role(self, role: str) -> List[Update]:
         """Get updates for a specific role"""
         return self.repository.get_by_role(role)
+    
+    def get_updates_by_department(self, department: str) -> List[Update]:
+        """Get updates for a specific department"""
+        # Use search functionality to find by department since repository doesn't have a direct method
+        all_updates = self.repository.get_recent(limit=1000)  # Get reasonable sample
+        return [u for u in all_updates if u.department and u.department.lower() == department.lower()]
+    
+    def get_updates_by_manager(self, manager: str) -> List[Update]:
+        """Get updates for employees under a specific manager"""
+        all_updates = self.repository.get_recent(limit=1000)  # Get reasonable sample
+        return [u for u in all_updates if u.manager and u.manager.lower() == manager.lower()]
 
     def answer_contextual_question(
         self, 
@@ -84,7 +95,9 @@ class ScalableReportingTool:
             
             # Create context from filtered updates
             context = "\n".join([
-                f"{update.employee} ({update.role}, {update.date}): {update.update}"
+                f"{update.employee} ({update.role}" + 
+                (f", {update.department}" if update.department else "") + 
+                f", {update.date}): {update.update}"
                 for update in updates
             ])
             
@@ -92,7 +105,9 @@ class ScalableReportingTool:
             if len(context) > settings.QUERY_TIMEOUT * 100:  # Rough estimate
                 # Truncate to most recent updates
                 context = "\n".join([
-                    f"{update.employee} ({update.role}, {update.date}): {update.update}"
+                    f"{update.employee} ({update.role}" + 
+                    (f", {update.department}" if update.department else "") + 
+                    f", {update.date}): {update.update}"
                     for update in updates[:20]  # Even more conservative
                 ])
                 context += f"\n\n[Note: Showing most recent 20 of {len(updates)} matching updates]"
@@ -167,22 +182,29 @@ class ScalableReportingTool:
             
             employees = set(u.employee for u in updates)
             roles = set(u.role for u in updates)
+            departments = set(u.department for u in updates if u.department)
             
             role_distribution = defaultdict(int)
             employee_activity = defaultdict(int)
+            department_distribution = defaultdict(int)
             
             for update in updates:
                 role_distribution[update.role] += 1
                 employee_activity[update.employee] += 1
+                if update.department:
+                    department_distribution[update.department] += 1
             
             return {
                 "total_updates": len(updates),
                 "employees": len(employees),
                 "roles": len(roles),
+                "departments": len(departments),
                 "role_distribution": dict(role_distribution),
                 "employee_activity": dict(employee_activity),
+                "department_distribution": dict(department_distribution),
                 "most_active_role": max(role_distribution.items(), key=lambda x: x[1])[0] if role_distribution else None,
                 "most_active_employee": max(employee_activity.items(), key=lambda x: x[1])[0] if employee_activity else None,
+                "most_active_department": max(department_distribution.items(), key=lambda x: x[1])[0] if department_distribution else None,
             }
         except Exception as e:
             raise QueryProcessingError(f"Failed to get team stats: {str(e)}")
@@ -265,7 +287,8 @@ class ScalableReportingTool:
         for role, updates in aggregated.role_updates.items():
             context_parts.append(f"\n--- {role} ({len(updates)} updates) ---")
             for update in updates[:3]:  # Max 3 updates per role for context
-                context_parts.append(f"• {update.employee} ({update.date}): {update.update}")
+                dept_info = f", {update.department}" if update.department else ""
+                context_parts.append(f"• {update.employee}{dept_info} ({update.date}): {update.update}")
             if len(updates) > 3:
                 context_parts.append(f"... and {len(updates) - 3} more updates")
         

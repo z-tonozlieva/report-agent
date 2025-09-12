@@ -38,6 +38,12 @@
                                     <div>
                                         <strong class="text-primary">{{ u.employee }}</strong>
                                         <span class="badge bg-secondary ms-2">{{ u.role }}</span>
+                                        {% if u.department %}
+                                        <span class="badge bg-info ms-1">{{ u.department }}</span>
+                                        {% endif %}
+                                        {% if u.manager %}
+                                        <small class="text-muted ms-2">Manager: {{ u.manager }}</small>
+                                        {% endif %}
                                     </div>
                                     <small class="text-muted">{{ u.date }}</small>
                                 </div>

@@ -3,13 +3,14 @@
 
 from .base_repository import BaseUpdateRepository
 from .database import DatabaseInitializer, init_database
-from .models import DatabaseManager, UpdateModel, db_manager
+from .models import DatabaseManager, UpdateModel, EmployeeModel, db_manager
 from .sqlalchemy_repository import SQLAlchemyUpdateRepository
 
 __all__ = [
     "BaseUpdateRepository",
     "SQLAlchemyUpdateRepository",
     "UpdateModel",
+    "EmployeeModel",
     "DatabaseManager",
     "db_manager",
     "DatabaseInitializer", 

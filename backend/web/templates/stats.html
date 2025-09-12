@@ -32,7 +32,7 @@
                     </div>
                     <div class="card-body">
                         <div class="row text-center">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="card bg-light">
                                     <div class="card-body">
                                         <i class="fas fa-list-alt fa-2x text-primary mb-2"></i>
@@ -41,12 +41,21 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="card bg-light">
                                     <div class="card-body">
                                         <i class="fas fa-users fa-2x text-success mb-2"></i>
-                                        <h3 class="text-success">{{ stats.team_members }}</h3>
+                                        <h3 class="text-success">{{ stats.total_employees }}</h3>
                                         <p class="text-muted mb-0">Team Members</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <i class="fas fa-building fa-2x text-info mb-2"></i>
+                                        <h3 class="text-info">{{ stats.department_distribution|length if stats.department_distribution else 0 }}</h3>
+                                        <p class="text-muted mb-0">Departments</p>
                                     </div>
                                 </div>
                             </div>
@@ -58,10 +67,33 @@
                             <ul class="list-unstyled">
                                 <li><i class="fas fa-calculator text-info me-2"></i>
                                     Average updates per member: 
-                                    <strong>{{ "%.1f"|format(stats.total_updates / stats.team_members) }}</strong>
+                                    <strong>{{ "%.1f"|format(stats.total_updates / stats.total_employees) }}</strong>
                                 </li>
+                                {% if stats.department_distribution %}
+                                <li><i class="fas fa-building text-success me-2"></i>
+                                    Top department: 
+                                    <strong>{{ stats.department_distribution|dictsort|reverse|first|first }}</strong>
+                                    ({{ stats.department_distribution|dictsort|reverse|first|last }} updates)
+                                </li>
+                                {% endif %}
                             </ul>
                         </div>
+                        
+                        {% if stats.department_distribution %}
+                        <div class="mt-4">
+                            <h5><i class="fas fa-chart-pie"></i> Department Breakdown</h5>
+                            <div class="row">
+                                {% for dept, count in stats.department_distribution.items() %}
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>{{ dept }}:</span>
+                                        <strong>{{ count }} updates</strong>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
                         {% endif %}
                     </div>
                 </div>
