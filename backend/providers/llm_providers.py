@@ -54,7 +54,7 @@ class GroqLLM(LangChainLLMWrapper):
     4. Install: pip install langchain-groq
     """
 
-    def __init__(self, model_name: str = "llama3-8b-8192"):
+    def __init__(self, model_name: str = "llama-3.1-8b-instant"):
         import os
         
         api_key = os.getenv("GROQ_API_KEY")
@@ -80,7 +80,7 @@ class GroqLLM(LangChainLLMWrapper):
 
 
 # Factory function to create LLM instances
-def create_llm(model_name: str = "llama3-8b-8192") -> LLMInterface:
+def create_llm(model_name: str = "llama-3.1-8b-instant") -> LLMInterface:
     """
     Factory function to create Groq LLM instance
 
