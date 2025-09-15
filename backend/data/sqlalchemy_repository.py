@@ -399,6 +399,28 @@ class SQLAlchemyUpdateRepository(BaseUpdateRepository):
         except SQLAlchemyError as e:
             raise DatabaseError(f"Failed to get unique departments: {str(e)}") from e
     
+    def get_by_department(self, department_name: str, limit: Optional[int] = None) -> List[Update]:
+        """Get updates for specific department - OPTIMIZED with join"""
+        try:
+            query = self.session.query(UpdateModel).join(
+                EmployeeModel
+            ).options(
+                joinedload(UpdateModel.employee_obj)
+            ).filter(
+                EmployeeModel.department.ilike(f"%{department_name}%")
+            ).order_by(
+                desc(UpdateModel.created_at)
+            )
+            
+            if limit:
+                query = query.limit(limit)
+                
+            db_updates = query.all()
+            return [self._to_update_model(db_update) for db_update in db_updates]
+            
+        except SQLAlchemyError as e:
+            raise DatabaseError(f"Failed to get updates by department: {str(e)}") from e
+    
     def _to_update_model(self, db_update: UpdateModel) -> Update:
         """Convert SQLAlchemy model to domain model"""
         return Update(

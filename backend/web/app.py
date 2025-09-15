@@ -232,29 +232,40 @@ def landing(request: Request):
 def updates_page(request: Request, employee: str = None, department: str = None):
     tool = get_reporting_tool()
     
-    # Apply filters if provided
+    # Apply filters if provided - use memory-optimized limits
+    from backend.core import settings
+    max_limit = settings.MAX_UPDATES_IN_MEMORY if settings.LOW_MEMORY_MODE else 100
+    
     if employee or department:
-        # Get filtered updates
-        if employee and department:
-            # Filter by both employee and department
-            all_updates = tool.repository.get_recent(limit=200)  # Get more to filter
-            updates = [u for u in all_updates if 
-                      (u.employee.lower() == employee.lower() if employee else True) and
-                      (u.department and u.department.lower() == department.lower() if department else True)][:50]
-        elif employee:
-            updates = tool.repository.get_by_employee(employee)[:50]
+        if employee:
+            # Use database-level filtering for employee with limit
+            updates = tool.repository.get_by_employee(employee, limit=max_limit)
         elif department:
-            # Filter by department
-            all_updates = tool.repository.get_recent(limit=200)
-            updates = [u for u in all_updates if 
-                      u.department and u.department.lower() == department.lower()][:50]
+            # For department filtering, use a smaller limit and database query if possible
+            try:
+                # Try database-level filtering if repository supports it
+                updates = tool.repository.get_by_department(department, limit=max_limit)
+            except (AttributeError, NotImplementedError):
+                # Fallback to in-memory filtering with smaller dataset
+                all_updates = tool.repository.get_recent(limit=max_limit)
+                updates = [u for u in all_updates if 
+                          u.department and u.department.lower() == department.lower()][:25]
     else:
         # No filters - show recent updates
-        updates = tool.repository.get_recent(limit=100)
+        updates = tool.repository.get_recent(limit=max_limit)
     
-    # Get filter options
-    available_employees = tool.repository.get_all_employee_names()
-    available_departments = tool.repository.get_unique_departments()
+    # Get filter options - limit in low memory mode
+    if settings.LOW_MEMORY_MODE:
+        # In low memory mode, get limited filter options
+        available_employees = tool.repository.get_all_employee_names()[:settings.MAX_FILTER_EMPLOYEES]
+        available_departments = tool.repository.get_unique_departments()[:settings.MAX_FILTER_DEPARTMENTS]
+        
+        # Force garbage collection after loading data
+        import gc
+        gc.collect()
+    else:
+        available_employees = tool.repository.get_all_employee_names()
+        available_departments = tool.repository.get_unique_departments()
     
     return templates.TemplateResponse(
         "updates.html", {

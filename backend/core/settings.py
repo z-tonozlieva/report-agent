@@ -33,16 +33,20 @@ class Settings:
     DEBUG = ENVIRONMENT == "development"
 
     # Performance settings - Optimized for 512MB memory limit
-    MAX_UPDATES_IN_MEMORY = 50   # Reduced for memory constraints
+    MAX_UPDATES_IN_MEMORY = 25   # Very aggressive limit for memory constraints
     QUERY_TIMEOUT = 50  # seconds
     
     # Memory optimization settings
     ENABLE_VECTOR_DB = os.getenv("ENABLE_VECTOR_DB", "false").lower() == "true"
-    MAX_REPORT_UPDATES = 25  # Maximum updates for report generation
+    MAX_REPORT_UPDATES = 15  # Maximum updates for report generation - reduced further
     FORCE_GC_AFTER_REQUESTS = True  # Force garbage collection
     
     # Low memory mode for free tier deployment
     LOW_MEMORY_MODE = os.getenv("LOW_MEMORY_MODE", "true").lower() == "true"
+    
+    # Ultra-low memory settings for filtering
+    MAX_FILTER_EMPLOYEES = 50   # Max employee names to show in filter
+    MAX_FILTER_DEPARTMENTS = 20 # Max departments to show in filter
 
     # Entity configuration
     ENTITIES_CONFIG_PATH = str(CONFIG_DIR / "entities.yaml")
