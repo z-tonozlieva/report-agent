@@ -32,9 +32,17 @@ class Settings:
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
     DEBUG = ENVIRONMENT == "development"
 
-    # Performance settings
-    MAX_UPDATES_IN_MEMORY = 1000  # Limit in-memory updates
+    # Performance settings - Optimized for 512MB memory limit
+    MAX_UPDATES_IN_MEMORY = 50   # Reduced for memory constraints
     QUERY_TIMEOUT = 50  # seconds
+    
+    # Memory optimization settings
+    ENABLE_VECTOR_DB = os.getenv("ENABLE_VECTOR_DB", "false").lower() == "true"
+    MAX_REPORT_UPDATES = 25  # Maximum updates for report generation
+    FORCE_GC_AFTER_REQUESTS = True  # Force garbage collection
+    
+    # Low memory mode for free tier deployment
+    LOW_MEMORY_MODE = os.getenv("LOW_MEMORY_MODE", "true").lower() == "true"
 
     # Entity configuration
     ENTITIES_CONFIG_PATH = str(CONFIG_DIR / "entities.yaml")

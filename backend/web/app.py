@@ -63,9 +63,9 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Add middleware to check file upload sizes
+# Add middleware to check file upload sizes and manage memory
 @app.middleware("http")
-async def limit_upload_size(request: Request, call_next):
+async def limit_upload_size_and_manage_memory(request: Request, call_next):
     # Check if this is a file upload request
     if request.method == "POST" and "multipart/form-data" in request.headers.get("content-type", ""):
         content_length = request.headers.get("content-length")
@@ -76,6 +76,13 @@ async def limit_upload_size(request: Request, call_next):
                 raise HTTPException(status_code=413, detail="File too large. Maximum size is 5MB.")
     
     response = await call_next(request)
+    
+    # Force garbage collection after memory-intensive operations in low memory mode
+    from backend.core import settings
+    if settings.FORCE_GC_AFTER_REQUESTS and settings.LOW_MEMORY_MODE:
+        if request.url.path in ["/generate_report", "/intelligent_ask", "/sync_vector_db"]:
+            gc.collect()
+    
     return response
 
 
@@ -158,6 +165,12 @@ def get_reporting_tool():
 def get_vector_service():
     global _vector_service
     if _vector_service is None:
+        # Check if vector DB is enabled (disabled by default in low memory mode)
+        from backend.core import settings
+        if not settings.ENABLE_VECTOR_DB:
+            logger.info("Vector service disabled in low memory mode")
+            return None
+            
         logger.info("Initializing vector service...")
         from backend.services.vector_service import VectorService
 
@@ -306,13 +319,16 @@ async def generate_report(
 
             logger.info("Generating report with scalable method...")
 
-            # Use scalable method that queries repository directly
+            # Use scalable method with memory-optimized limits
+            from backend.core import settings
+            max_updates = settings.MAX_REPORT_UPDATES if settings.LOW_MEMORY_MODE else 100
+            
             report = tool.generate_smart_report(
                 date_range=date_range,
                 custom_prompt=custom_prompt.strip()
                 if custom_prompt and custom_prompt.strip()
                 else None,
-                max_updates=100  # Reasonable limit for performance
+                max_updates=max_updates
             )
             logger.info("Report generation completed")
 
@@ -389,10 +405,11 @@ def submit_update(
     tool = get_reporting_tool()
     tool.add_update(update_obj)
 
-    # Also add to vector database
+    # Also add to vector database (if enabled)
     try:
         vector_service = get_vector_service()
-        vector_service.add_update(update_obj)
+        if vector_service is not None:
+            vector_service.add_update(update_obj)
     except Exception as e:
         logger.warning(f"Failed to add update to vector DB: {str(e)}")
 
@@ -591,9 +608,10 @@ def delete_all_updates(request: Request):
     tool = get_reporting_tool()
     tool.clear_updates()
 
-    # Also clear vector database
+    # Also clear vector database (if enabled)
     vector_service = get_vector_service()
-    vector_service.clear_collection()
+    if vector_service is not None:
+        vector_service.clear_collection()
 
     return RedirectResponse("/updates", status_code=303)
 

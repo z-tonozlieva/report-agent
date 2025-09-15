@@ -133,11 +133,15 @@ class ScalableReportingTool:
         self, 
         date_range: Optional[Tuple[datetime, datetime]] = None,
         custom_prompt: Optional[str] = None,
-        max_updates: int = 100
+        max_updates: int = None
     ) -> str:
         """Generate a report using SMART data selection - SCALABLE"""
         
         try:
+            # Use memory-optimized limits
+            if max_updates is None:
+                max_updates = settings.MAX_REPORT_UPDATES if settings.LOW_MEMORY_MODE else 100
+            
             # Get recent updates within date range
             if date_range:
                 updates = self.get_updates_by_date_range(

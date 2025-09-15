@@ -10,6 +10,10 @@ services:
         sync: false
       - key: ENVIRONMENT  
         value: production
+      - key: LOW_MEMORY_MODE
+        value: "true"
+      - key: ENABLE_VECTOR_DB
+        value: "false"
     healthCheckPath: /health
     autoDeploy: true
     scaling:
