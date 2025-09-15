@@ -526,11 +526,14 @@ def stats(request: Request):
     # Use repository stats directly instead of manually loading all updates
     stats = tool.repository.get_stats()
 
-    # Add vector database stats
+    # Add vector database stats (if enabled)
     try:
         vector_service = get_vector_service()
-        vector_stats = vector_service.get_collection_stats()
-        stats["vector_db"] = vector_stats
+        if vector_service is not None:
+            vector_stats = vector_service.get_collection_stats()
+            stats["vector_db"] = vector_stats
+        else:
+            stats["vector_db"] = {"status": "disabled", "reason": "Low memory mode"}
     except Exception as e:
         logger.warning(f"Could not get vector DB stats: {str(e)}")
         stats["vector_db"] = {"error": str(e)}
@@ -633,6 +636,19 @@ async def intelligent_ask_page_results(
         tool = get_reporting_tool()
         vector_service = get_vector_service()
         router = get_query_router()
+        
+        # Skip intelligent routing if vector service is disabled
+        if vector_service is None:
+            return templates.TemplateResponse(
+                "intelligent_ask.html",
+                {
+                    "request": request,
+                    "question": question,
+                    "answer": "Intelligent query routing is disabled in low memory mode. Please use the basic Q&A instead.",
+                    "method_used": "disabled",
+                    "confidence": 0,
+                },
+            )
 
         # Route the query
         response = router.route_query(
@@ -707,6 +723,17 @@ async def intelligent_ask(
         tool = get_reporting_tool()
         vector_service = get_vector_service()
         router = get_query_router()
+        
+        # Use basic Q&A if vector service is disabled
+        if vector_service is None:
+            answer = tool.answer_contextual_question(question, max_updates=25)
+            return {
+                "question": question,
+                "answer": answer,
+                "method_used": "basic_qa",
+                "confidence": 0.7,
+                "status": "success",
+            }
 
         # Route the query
         response = router.route_query(
