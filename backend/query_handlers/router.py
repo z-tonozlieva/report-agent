@@ -4,7 +4,7 @@
 import logging
 from typing import Optional
 
-from core import LLMInterface
+from backend.core import LLMInterface
 from .analytical_handler import AnalyticalHandler
 from .classifier import QueryClassifier
 from .comparison_handler import ComparisonHandler

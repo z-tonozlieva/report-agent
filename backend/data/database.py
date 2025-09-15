@@ -4,7 +4,7 @@
 import logging
 from pathlib import Path
 
-from core import settings
+from backend.core import settings
 from .models import db_manager
 
 logger = logging.getLogger(__name__)

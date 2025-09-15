@@ -7,7 +7,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Tex
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
-from core import settings
+from backend.core import settings
 
 Base = declarative_base()
 

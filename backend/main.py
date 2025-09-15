@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 import uvicorn
-from web.app import app
+from backend.web.app import app
 
 # Load environment variables from .env file
 def load_env():

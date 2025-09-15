@@ -89,7 +89,7 @@ async def health_check():
 @app.get("/health/database")  
 async def database_health_check():
     try:
-        from data import DatabaseInitializer
+        from backend.data import DatabaseInitializer
         
         db_info = DatabaseInitializer.get_database_info()
         return {
@@ -134,7 +134,7 @@ def get_llm():
     global _llm
     if _llm is None:
         logger.info("Initializing LLM...")
-        from providers.llm_providers import create_llm
+        from backend.providers.llm_providers import create_llm
 
         _llm = create_llm()
         logger.info("LLM initialized successfully")
@@ -145,8 +145,8 @@ def get_reporting_tool():
     global _tool
     if _tool is None:
         logger.info("Initializing reporting tool...")
-        from services.scalable_reporting_tool import ScalableReportingTool
-        from data import SQLAlchemyUpdateRepository
+        from backend.services.scalable_reporting_tool import ScalableReportingTool
+        from backend.data import SQLAlchemyUpdateRepository
 
         # Create SQLAlchemy repository and scalable reporting tool
         repository = SQLAlchemyUpdateRepository()
@@ -159,7 +159,7 @@ def get_vector_service():
     global _vector_service
     if _vector_service is None:
         logger.info("Initializing vector service...")
-        from services.vector_service import VectorService
+        from backend.services.vector_service import VectorService
 
         _vector_service = VectorService()
         logger.info("Vector service initialized successfully")
@@ -170,7 +170,7 @@ def get_query_router():
     global _query_router
     if _query_router is None:
         logger.info("Initializing query router...")
-        from query_handlers.router import SmartQueryRouter
+        from backend.query_handlers.router import SmartQueryRouter
 
         _query_router = SmartQueryRouter(llm=get_llm())
         logger.info("Query router initialized successfully")
@@ -183,7 +183,7 @@ async def startup_event():
     
     # Initialize database with SQLAlchemy
     try:
-        from data import init_database
+        from backend.data import init_database
         
         init_database()
         logger.info("Database initialized with SQLAlchemy and indexes")
@@ -193,7 +193,7 @@ async def startup_event():
 
     # Initialize entity configuration
     try:
-        from query_handlers.entity_config import initialize_entity_config
+        from backend.query_handlers.entity_config import initialize_entity_config
 
         entity_config = initialize_entity_config()
         logger.info(
@@ -370,11 +370,11 @@ def submit_update(
     manager: Optional[str] = Form(None),
 ):
     if not date:
-        from core.config import Config
+        from backend.core.config import Config
         date = datetime.now().strftime(Config.DATE_FORMAT)
 
     # Use scalable repository for consistent architecture
-    from core.models import Update
+    from backend.core.models import Update
     
     update_obj = Update(
         employee=employee, 
@@ -432,7 +432,7 @@ async def bulk_upload(request: Request, file: UploadFile = File(...)):
         required_fields = ["employee", "role", "date", "update"]
         
         # Convert to Update objects for validation
-        from core.models import Update
+        from backend.core.models import Update
         updates_to_add = []
         
         for i, update_data in enumerate(updates_data):
@@ -537,7 +537,7 @@ async def get_employees_api():
 @app.get("/load_mock_data", response_class=HTMLResponse)
 def load_mock_data(request: Request):
     # Use scalable repository and DataLoader
-    from services.data_loader import DataLoader
+    from backend.services.data_loader import DataLoader
     
     tool = get_reporting_tool()
     tool.clear_updates()  # Clear existing data
@@ -551,7 +551,7 @@ def load_mock_data(request: Request):
 
 @app.get("/import_mock_data", response_class=HTMLResponse)
 def import_mock_data(request: Request):
-    from services.data_loader import DataLoader
+    from backend.services.data_loader import DataLoader
 
     # Import all mock updates using scalable repository
     tool = get_reporting_tool()
@@ -563,7 +563,7 @@ def import_mock_data(request: Request):
 
 @app.get("/import_additional_mock_data", response_class=HTMLResponse)
 def import_additional_mock_data(request: Request):
-    from services.data_loader import DataLoader
+    from backend.services.data_loader import DataLoader
 
     # Import additional mock updates using scalable repository
     tool = get_reporting_tool()
@@ -575,7 +575,7 @@ def import_additional_mock_data(request: Request):
 
 @app.get("/import_mock_updates_with_blockers", response_class=HTMLResponse)
 def import_mock_updates_with_blockers(request: Request):
-    from services.data_loader import DataLoader
+    from backend.services.data_loader import DataLoader
 
     # Import mock updates with blockers using scalable repository
     tool = get_reporting_tool()
@@ -740,7 +740,7 @@ async def classify_query(question: str = Form(...)):
 async def download_entity_config():
     """Download the current entity configuration file"""
     try:
-        from query_handlers.entity_config import get_entity_config
+        from backend.query_handlers.entity_config import get_entity_config
 
         config = get_entity_config()
         config_path = config.config_path
@@ -817,7 +817,7 @@ async def upload_entity_config(config_file: UploadFile = File(...)):
             )
 
         # Save the new configuration
-        from query_handlers.entity_config import get_entity_config
+        from backend.query_handlers.entity_config import get_entity_config
 
         config = get_entity_config()
 

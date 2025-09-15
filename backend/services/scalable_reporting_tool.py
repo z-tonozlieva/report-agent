@@ -5,9 +5,9 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-from core import AggregatedData, LLMInterface, Update, settings
-from core.exceptions import QueryProcessingError
-from data import SQLAlchemyUpdateRepository
+from backend.core import AggregatedData, LLMInterface, Update, settings
+from backend.core.exceptions import QueryProcessingError
+from backend.data import SQLAlchemyUpdateRepository
 
 
 class ScalableReportingTool:

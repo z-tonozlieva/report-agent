@@ -8,8 +8,8 @@ from sqlalchemy import and_, desc, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
-from core import Update
-from core.exceptions import DatabaseError
+from backend.core import Update
+from backend.core.exceptions import DatabaseError
 from .base_repository import BaseUpdateRepository
 from .models import UpdateModel, EmployeeModel, db_manager
 

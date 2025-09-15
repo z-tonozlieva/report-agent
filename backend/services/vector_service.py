@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-from core import Update
+from backend.core import Update
 
 logger = logging.getLogger(__name__)
 
