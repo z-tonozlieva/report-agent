@@ -5,13 +5,14 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: ./
+    startCommand: "cd /app/backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: GROQ_API_KEY
         sync: false
       - key: ENVIRONMENT  
         value: production
       - key: PYTHONPATH
-        value: /app
+        value: /app/backend
     healthCheckPath: /health
     autoDeploy: true
     scaling:
