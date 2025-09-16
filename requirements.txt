@@ -5,7 +5,6 @@ python-multipart>=0.0.6
 
 # Database and data processing
 sqlalchemy>=2.0.0
-pandas>=2.0.0
 
 # Template rendering and markdown processing
 jinja2>=3.1.0

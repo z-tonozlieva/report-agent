@@ -67,7 +67,12 @@ class Config:
         """Get Groq API key from environment"""
         # Load .env only for local development
         cls.load_env_for_development()
-        return os.getenv("GROQ_API_KEY")
+        
+        # Always try to get from environment variables (Railway provides these directly)
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            print("WARNING: GROQ_API_KEY not found in environment variables")
+        return api_key
 
 
 # Export constants for backwards compatibility
