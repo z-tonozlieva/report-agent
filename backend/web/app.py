@@ -143,11 +143,17 @@ def get_llm():
         logger.info("=== DEBUG: About to initialize LLM ===")
         import os
         logger.info(f"GROQ_API_KEY in environment: {'Yes' if os.getenv('GROQ_API_KEY') else 'No'}")
+        logger.info(f"GROQ_API_KEY value: {os.getenv('GROQ_API_KEY')[:10] if os.getenv('GROQ_API_KEY') else 'None'}...")
         logger.info("Initializing LLM...")
         from backend.providers.llm_providers import create_llm
 
         _llm = create_llm()
         logger.info("LLM initialized successfully")
+    else:
+        logger.info("=== DEBUG: Using existing LLM instance ===")
+        import os
+        logger.info(f"GROQ_API_KEY in environment: {'Yes' if os.getenv('GROQ_API_KEY') else 'No'}")
+        logger.info(f"GROQ_API_KEY value: {os.getenv('GROQ_API_KEY')[:10] if os.getenv('GROQ_API_KEY') else 'None'}...")
     return _llm
 
 

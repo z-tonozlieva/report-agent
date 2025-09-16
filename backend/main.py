@@ -1,5 +1,5 @@
-# main.py
-"""Main entry point for the PM Reporting Tool."""
+# main.py  
+"""Main entry point for the PM Reporting Tool - debug env vars."""
 
 import os
 from pathlib import Path
