@@ -1,0 +1,21 @@
+# Core web framework and server
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.6
+
+# Database and data processing
+sqlalchemy>=2.0.0
+
+# Template rendering and markdown processing
+jinja2>=3.1.0
+markdown>=3.4.0
+
+# LLM integration - Groq only
+langchain-core>=0.1.50
+langchain-groq>=0.1.4
+
+# Configuration file support
+pyyaml>=6.0.0
+
+# Rate limiting and security
+slowapi>=0.1.9
