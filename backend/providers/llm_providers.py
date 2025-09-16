@@ -59,12 +59,15 @@ class GroqLLM(LangChainLLMWrapper):
         
         api_key = os.getenv("GROQ_API_KEY")
         
-        # Debug: Print all environment variables containing "GROQ" or "API"
-        print("=== DEBUG: Environment Variables ===")
+        # Debug: Print all environment variables to see what Railway provides
+        print("=== DEBUG: ALL Environment Variables ===")
+        print(f"ENVIRONMENT: {os.getenv('ENVIRONMENT')}")
+        print(f"GROQ_API_KEY: {api_key[:10] if api_key else 'None'}...")
+        print(f"Total env vars: {len(os.environ)}")
+        # Show any variables that might be related
         for key, value in os.environ.items():
-            if "GROQ" in key or "API" in key:
-                print(f"{key} = {value[:10]}..." if value else f"{key} = None")
-        print(f"GROQ_API_KEY directly: {api_key[:10] if api_key else 'None'}...")
+            if "GROQ" in key.upper() or "API" in key.upper():
+                print(f"Found: {key} = {value[:10] if value else 'None'}...")
         print("=== END DEBUG ===")
 
         if not api_key:
