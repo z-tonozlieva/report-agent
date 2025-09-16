@@ -179,12 +179,16 @@ def get_vector_service():
         if not settings.ENABLE_VECTOR_DB:
             logger.info("Vector service disabled in low memory mode")
             return None
-            
-        logger.info("Initializing vector service...")
-        from backend.services.vector_service import VectorService
-
-        _vector_service = VectorService()
-        logger.info("Vector service initialized successfully")
+        
+        try:
+            logger.info("Initializing vector service...")
+            from backend.services.vector_service import VectorService
+            _vector_service = VectorService()
+            logger.info("Vector service initialized successfully")
+        except ImportError as e:
+            logger.warning(f"Vector service dependencies not available: {e}")
+            logger.info("Vector service will be disabled for this deployment")
+            return None
     return _vector_service
 
 

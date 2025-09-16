@@ -3,7 +3,11 @@
 
 from .data_loader import DataLoader
 from .scalable_reporting_tool import ScalableReportingTool
-from .vector_service import VectorService
 
-# Clean architecture - only export active components
-__all__ = ["DataLoader", "ScalableReportingTool", "VectorService"]
+# Only import VectorService if chromadb is available
+try:
+    from .vector_service import VectorService
+    __all__ = ["DataLoader", "ScalableReportingTool", "VectorService"]
+except ImportError:
+    # chromadb not available - skip vector service
+    __all__ = ["DataLoader", "ScalableReportingTool"]
