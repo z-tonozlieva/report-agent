@@ -58,6 +58,14 @@ class GroqLLM(LangChainLLMWrapper):
         import os
         
         api_key = os.getenv("GROQ_API_KEY")
+        
+        # Debug: Print all environment variables containing "GROQ" or "API"
+        print("=== DEBUG: Environment Variables ===")
+        for key, value in os.environ.items():
+            if "GROQ" in key or "API" in key:
+                print(f"{key} = {value[:10]}..." if value else f"{key} = None")
+        print(f"GROQ_API_KEY directly: {api_key[:10] if api_key else 'None'}...")
+        print("=== END DEBUG ===")
 
         if not api_key:
             print("Warning: GROQ_API_KEY not set. Set it as environment variable.")
