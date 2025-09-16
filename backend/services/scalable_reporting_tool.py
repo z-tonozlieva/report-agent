@@ -172,6 +172,7 @@ class ScalableReportingTool:
             print(f"LLM object type: {type(self.llm)}")
             result = self.llm.generate_response(full_prompt)
             print(f"=== DEBUG: LLM returned result (length: {len(result) if result else 0}) ===")
+            print(f"=== DEBUG: First 100 chars of result: {result[:100] if result else 'None'} ===")
             return result
             
         except Exception as e:
