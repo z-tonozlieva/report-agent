@@ -4,10 +4,10 @@
 from .data_loader import DataLoader
 from .scalable_reporting_tool import ScalableReportingTool
 
-# Only import VectorService if chromadb is available
+# Use Pinecone vector service (lightweight)
 try:
-    from .vector_service import VectorService
+    from .pinecone_vector_service import PineconeVectorService as VectorService
     __all__ = ["DataLoader", "ScalableReportingTool", "VectorService"]
 except ImportError:
-    # chromadb not available - skip vector service
+    # Pinecone dependencies not available - skip vector service
     __all__ = ["DataLoader", "ScalableReportingTool"]

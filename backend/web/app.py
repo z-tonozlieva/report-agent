@@ -181,12 +181,12 @@ def get_vector_service():
             return None
         
         try:
-            logger.info("Initializing vector service...")
-            from backend.services.vector_service import VectorService
-            _vector_service = VectorService()
-            logger.info("Vector service initialized successfully")
+            logger.info("Initializing Pinecone vector service...")
+            from backend.services.pinecone_vector_service import PineconeVectorService
+            _vector_service = PineconeVectorService()
+            logger.info("Pinecone vector service initialized successfully")
         except ImportError as e:
-            logger.warning(f"Vector service dependencies not available: {e}")
+            logger.warning(f"Pinecone vector service dependencies not available: {e}")
             logger.info("Vector service will be disabled for this deployment")
             return None
     return _vector_service
