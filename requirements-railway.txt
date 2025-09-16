@@ -14,6 +14,10 @@ markdown>=3.4.0
 langchain-core>=0.1.50
 langchain-groq>=0.1.4
 
+# Vector database and embeddings (re-enabled)
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+
 # Configuration file support
 pyyaml>=6.0.0
 
