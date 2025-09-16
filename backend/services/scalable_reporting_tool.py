@@ -168,7 +168,11 @@ class ScalableReportingTool:
             context = self._create_structured_context(aggregated)
             full_prompt = f"{prompt}\n\n{context}"
             
-            return self.llm.generate_response(full_prompt)
+            print("=== DEBUG: About to call LLM generate_response ===")
+            print(f"LLM object type: {type(self.llm)}")
+            result = self.llm.generate_response(full_prompt)
+            print(f"=== DEBUG: LLM returned result (length: {len(result) if result else 0}) ===")
+            return result
             
         except Exception as e:
             raise QueryProcessingError(f"Failed to generate report: {str(e)}")
