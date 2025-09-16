@@ -140,6 +140,9 @@ _query_router = None
 def get_llm():
     global _llm
     if _llm is None:
+        logger.info("=== DEBUG: About to initialize LLM ===")
+        import os
+        logger.info(f"GROQ_API_KEY in environment: {'Yes' if os.getenv('GROQ_API_KEY') else 'No'}")
         logger.info("Initializing LLM...")
         from backend.providers.llm_providers import create_llm
 
